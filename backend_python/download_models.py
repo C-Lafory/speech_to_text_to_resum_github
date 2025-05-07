@@ -129,15 +129,26 @@ def download_models():
         try:
             subprocess.run(["ollama", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             logging.info("✅ Client Ollama déjà installé.")
-        except FileNotFoundError:
+        except (FileNotFoundError, subprocess.CalledProcessError):
             logging.info("⬇️ Installation du client Ollama...")
             try:
+                # Vérifier si curl est installé
+                subprocess.run(["curl", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            except (FileNotFoundError, subprocess.CalledProcessError):
+                logging.info("⬇️ Installation de curl...")
+                subprocess.run(["apt-get", "update"], check=True)
+                subprocess.run(["apt-get", "install", "-y", "curl"], check=True)
+            
+            try:
                 install_command = "curl -fsSL https://ollama.com/install.sh | sh"
-                subprocess.run(install_command, check=True, shell=True)
+                result = subprocess.run(install_command, shell=True, capture_output=True, text=True)
+                if result.returncode != 0:
+                    raise RuntimeError(f"Échec de l'installation d'Ollama: {result.stderr}")
                 logging.info("✅ Client Ollama installé avec succès.")
             except Exception as e:
                 logging.error(f"❌ Échec de l'installation du client Ollama : {e}")
-                raise RuntimeError("Ollama doit être installé manuellement. Consultez https://ollama.com pour plus d'informations.")
+                logging.warning("⚠️ Ollama n'est pas installé. Le résumé ne sera pas disponible.")
+                return  # On continue sans Ollama
 
         # 5. Vérification du modèle Mistral via Ollama
         logging.info("🔍 Vérification du modèle Mistral via Ollama...")
@@ -146,7 +157,8 @@ def download_models():
             logging.info("✅ Modèle Mistral vérifié/installé via Ollama")
         except Exception as e:
             logging.error(f"❌ Erreur lors de la vérification du modèle Mistral : {e}")
-            raise
+            logging.warning("⚠️ Le modèle Mistral n'est pas disponible. Le résumé ne sera pas disponible.")
+            return  # On continue sans Mistral
 
     # Vérification finale
     models_status = verify_models()
