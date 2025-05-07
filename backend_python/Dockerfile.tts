@@ -30,10 +30,11 @@ RUN mkdir -p models
 COPY . .
 
 # Rendre les scripts exécutables
-RUN chmod +x init_tts.sh
+RUN chmod +x init_main.sh && \
+    chmod +x init_tts.sh
 
 # Exposition du port
 EXPOSE 8001
 
 # Commande de démarrage
-CMD ["./init_tts.sh"] 
+CMD ["/bin/bash", "./init_tts.sh"] 

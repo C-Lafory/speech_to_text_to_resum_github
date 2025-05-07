@@ -35,10 +35,11 @@ RUN mkdir -p models
 COPY . .
 
 # Rendre les scripts exécutables
-RUN chmod +x init_main.sh
+RUN chmod +x init_main.sh && \
+    chmod +x init_tts.sh
 
 # Exposition du port
 EXPOSE 8000
 
 # Commande de démarrage
-CMD ["./init_main.sh"] 
+CMD ["/bin/bash", "./init_main.sh"] 
