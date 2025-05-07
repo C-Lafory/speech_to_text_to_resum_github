@@ -132,14 +132,6 @@ def download_models():
         except (FileNotFoundError, subprocess.CalledProcessError):
             logging.info("⬇️ Installation du client Ollama...")
             try:
-                # Vérifier si curl est installé
-                subprocess.run(["curl", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            except (FileNotFoundError, subprocess.CalledProcessError):
-                logging.info("⬇️ Installation de curl...")
-                subprocess.run(["apt-get", "update"], check=True)
-                subprocess.run(["apt-get", "install", "-y", "curl"], check=True)
-            
-            try:
                 install_command = "curl -fsSL https://ollama.com/install.sh | sh"
                 result = subprocess.run(install_command, shell=True, capture_output=True, text=True)
                 if result.returncode != 0:
