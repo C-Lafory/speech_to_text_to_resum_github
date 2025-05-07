@@ -3,7 +3,7 @@ from typing import Optional
 import os
 import secrets
 import tempfile
-from text_to_speech import generate_tts_audio
+from text_to_speech import generate_audio
 import logging
 
 # Configuration des logs
@@ -24,7 +24,7 @@ async def verify_api_key(x_api_key: str = Header(...)):
     return x_api_key
 
 @app.post("/generate-audio")
-async def generate_audio(
+async def generate_audio_endpoint(
     text: str,
     api_key: str = Depends(verify_api_key)
 ):
@@ -47,7 +47,7 @@ async def generate_audio(
         
         try:
             # Génération de l'audio
-            generate_tts_audio(temp_input_path, temp_output_path)
+            generate_audio(temp_input_path, temp_output_path)
             
             # Lecture du fichier audio généré
             with open(temp_output_path, 'rb') as audio_file:
