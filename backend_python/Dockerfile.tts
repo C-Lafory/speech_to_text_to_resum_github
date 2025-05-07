@@ -1,34 +1,39 @@
 # Utilisation de Python 3.10 pour TTS
 FROM python:3.10-slim
 
-# Installation des dépendances système nécessaires
+# Création du répertoire de travail
+WORKDIR /app
+
+# Installation des dépendances système
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     curl \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Création du répertoire de travail
-WORKDIR /app
+# Création de l'environnement virtuel
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copie des fichiers de dépendances
 COPY requirement_3.10.txt .
 
 # Installation des dépendances Python
-RUN pip install --no-cache-dir -r requirement_3.10.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirement_3.10.txt
 
 # Création du dossier models
 RUN mkdir -p models
 
 # Copie du code source
-COPY text_to_speech.py .
-COPY download_models.py .
-COPY init_tts.sh .
+COPY . .
 
-# Rendre le script exécutable
+# Rendre les scripts exécutables
 RUN chmod +x init_tts.sh
 
-# Téléchargement des modèles
-RUN python download_models.py
+# Exposition du port
+EXPOSE 8001
 
-# Commande par défaut
+# Commande de démarrage
 CMD ["./init_tts.sh"] 

@@ -2,37 +2,64 @@ version: '3.8'
 
 services:
   # Service principal (Python 3.12)
-  main_backend:
+  main_api:
     build:
       context: ./backend_python
       dockerfile: Dockerfile.main
+    ports:
+      - "8000:8000"
     volumes:
       - ./backend_python:/app
       - ./models:/app/models
+      - ollama_data:/root/.ollama
     environment:
-      - PYTHONUNBUFFERED=1
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY}  # Clé API partagée
-    ports:
-      - "8000:8000"
+      - PYTHONPATH=/app
+      - TTS_MODEL_PATH=/app/models/tts
+      - WHISPER_MODEL_PATH=/app/models/whisper
+      - SPACY_MODEL_PATH=/app/models/spacy
+      - MAIN_API_PORT=8000
+      - OLLAMA_HOST=localhost
+      - OLLAMA_PORT=11434
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ./init_main.sh
     networks:
-      - internal_network
+      - app_network
 
   # Service TTS (Python 3.10)
-  tts_backend:
+  tts_service:
     build:
       context: ./backend_python
       dockerfile: Dockerfile.tts
+    ports:
+      - "8001:8001"
     volumes:
       - ./backend_python:/app
       - ./models:/app/models
     environment:
-      - PYTHONUNBUFFERED=1
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY}  # Clé API partagée
-    ports:
-      - "8001:8001"
+      - PYTHONPATH=/app
+      - TTS_MODEL_PATH=/app/models/tts
+      - TTS_API_PORT=8001
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ./init_tts.sh
     networks:
-      - internal_network
+      - app_network
 
 networks:
-  internal_network:
-    internal: true  # Réseau interne uniquement 
+  app_network:
+    driver: bridge
+
+volumes:
+  ollama_data:
+    driver: local 

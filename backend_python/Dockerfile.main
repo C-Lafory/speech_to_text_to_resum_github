@@ -9,31 +9,36 @@ RUN apt-get update && apt-get install -y \
     git \
     ffmpeg \
     curl \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Création de l'environnement virtuel
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copie des fichiers de dépendances
 COPY requirement_3.12.txt .
 
 # Installation des dépendances Python
-RUN pip install --no-cache-dir -r requirement_3.12.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirement_3.12.txt && \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Installation d'Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # Création du dossier models
 RUN mkdir -p models
 
 # Copie du code source
-COPY transcription.py .
-COPY resume.py .
-COPY download_models.py .
-COPY init_main.sh .
+COPY . .
 
-# Rendre le script exécutable
+# Rendre les scripts exécutables
 RUN chmod +x init_main.sh
-
-# Téléchargement des modèles
-RUN python download_models.py
 
 # Exposition du port
 EXPOSE 8000
 
 # Commande de démarrage
-CMD ["uvicorn", "main_api:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["./init_main.sh"] 
