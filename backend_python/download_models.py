@@ -49,10 +49,14 @@ def get_spacy():
 
 def check_disk_space():
     """Vérifie l'espace disque disponible"""
-    total, used, free = shutil.disk_usage("/")
-    free_gb = free // (2**30)  # Conversion en GB
-    if free_gb < MIN_DISK_SPACE_GB:
-        raise RuntimeError(f"❌ Espace disque insuffisant. {free_gb}GB disponible, {MIN_DISK_SPACE_GB}GB requis.")
+    try:
+        total, used, free = shutil.disk_usage("/")
+        free_gb = free // (2**30)  # Conversion en GB
+        if free_gb < 5:  # 5 GB minimum requis
+            raise Exception(f"Espace disque insuffisant: {free_gb} GB disponibles")
+    except Exception as e:
+        logging.error(f"Erreur lors de la vérification de l'espace disque: {str(e)}")
+        raise
 
 def check_ollama_status():
     """Vérifie le statut d'Ollama via l'API"""
@@ -123,59 +127,37 @@ def verify_models():
     return models_status
 
 def download_models():
-    """Télécharge tous les modèles nécessaires"""
-    # Vérification de l'espace disque
-    check_disk_space()
-
-    # 1. Vérification et téléchargement du modèle Whisper
-    if IS_MAIN_SERVICE:
-        logging.info(f"🔍 Vérification du modèle Whisper ({WHISPER_MODEL_SIZE})...")
-        whisper = get_whisper()
-        if whisper:
-            whisper_model_path = WHISPER_DIR / f"{WHISPER_MODEL_SIZE}.pt"
-            if not whisper_model_path.exists():
-                logging.info(f"⬇️ Téléchargement du modèle Whisper ({WHISPER_MODEL_SIZE})...")
-                whisper.load_model(WHISPER_MODEL_SIZE, download_root=str(WHISPER_DIR))
-                logging.info(f"✅ Modèle Whisper téléchargé dans {WHISPER_DIR}")
-            else:
-                logging.info(f"✅ Modèle Whisper déjà présent : {whisper_model_path}")
-
-        # 2. Vérification et téléchargement du modèle Spacy
-        logging.info(f"🔍 Vérification du modèle Spacy ({SPACY_MODEL_NAME})...")
-        spacy = get_spacy()
-        if spacy:
-            try:
-                spacy.load(SPACY_MODEL_NAME)
-                logging.info(f"✅ Modèle Spacy déjà présent")
-            except (OSError, ImportError):
-                logging.info(f"⬇️ Téléchargement du modèle Spacy ({SPACY_MODEL_NAME})...")
-                spacy.cli.download(SPACY_MODEL_NAME)
-                logging.info(f"✅ Modèle Spacy téléchargé")
-
-    # 3. Vérification et téléchargement du modèle TTS
-    if IS_TTS_SERVICE:
-        logging.info(f"🔍 Vérification du modèle TTS ({TTS_MODEL_NAME})...")
-        try:
+    """Télécharge les modèles nécessaires"""
+    try:
+        # Vérifier l'espace disque
+        check_disk_space()
+        
+        # Créer les répertoires
+        MODELS_DIR.mkdir(exist_ok=True)
+        
+        # Télécharger les modèles selon le service
+        if IS_MAIN_SERVICE:
+            # Télécharger Whisper
+            logging.info("Téléchargement du modèle Whisper...")
+            import whisper
+            whisper.load_model(WHISPER_MODEL_SIZE)
+            
+            # Télécharger Spacy
+            logging.info("Téléchargement du modèle Spacy...")
+            import spacy
+            spacy.load(SPACY_MODEL_NAME)
+            
+        if IS_TTS_SERVICE:
+            # Télécharger TTS
+            logging.info("Téléchargement du modèle TTS...")
             from TTS.api import TTS
-            tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False)
-            if tts.speakers and len(tts.speakers) > 0:
-                logging.info(f"✅ Modèle TTS déjà présent et fonctionnel")
-            else:
-                raise RuntimeError("Modèle TTS présent mais pas de locuteurs disponibles")
-        except Exception as e:
-            logging.info(f"⬇️ Téléchargement du modèle TTS ({TTS_MODEL_NAME})...")
-            tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=True)
-            if not tts.speakers or len(tts.speakers) == 0:
-                raise RuntimeError("Modèle TTS téléchargé mais pas de locuteurs disponibles")
-            logging.info(f"✅ Modèle TTS téléchargé")
-
-    # Vérification finale
-    models_status = verify_models()
-    if all(models_status.values()):
-        logging.info("✅ Tous les modèles sont correctement installés et fonctionnels")
-    else:
-        missing_models = [model for model, status in models_status.items() if not status]
-        logging.warning(f"⚠️ Certains modèles ne sont pas correctement installés : {', '.join(missing_models)}")
+            TTS(model_name=TTS_MODEL_NAME)
+            
+        logging.info("Tous les modèles ont été téléchargés avec succès")
+        
+    except Exception as e:
+        logging.error(f"Erreur lors du téléchargement des modèles: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     download_models()

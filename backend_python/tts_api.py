@@ -1,10 +1,8 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
-from typing import Optional
 import os
-import secrets
-import tempfile
-from text_to_speech import generate_audio
 import logging
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from text_to_speech import generate_tts_audio
 
 # Configuration des logs
 logging.basicConfig(
@@ -14,54 +12,24 @@ logging.basicConfig(
 
 app = FastAPI()
 
-# Clé API pour l'authentification entre services
-API_KEY = os.getenv("INTERNAL_API_KEY", secrets.token_hex(32))
+class TextToSpeechRequest(BaseModel):
+    text: str
 
-# Middleware d'authentification
-async def verify_api_key(x_api_key: str = Header(...)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid API key")
-    return x_api_key
-
-@app.post("/generate-audio")
-async def generate_audio_endpoint(
-    text: str,
-    api_key: str = Depends(verify_api_key)
-):
+@app.post("/tts")
+async def text_to_speech(request: TextToSpeechRequest):
     try:
-        # Vérification de la longueur du texte
-        if len(text) > 50000:  # 50k caractères max
-            raise HTTPException(status_code=400, detail="Text too long")
+        # Créer le répertoire de sortie s'il n'existe pas
+        output_dir = "static/output/tts"
+        os.makedirs(output_dir, exist_ok=True)
         
-        # Vérification du contenu (pas de code malveillant)
-        if "<script>" in text.lower() or "javascript:" in text.lower():
-            raise HTTPException(status_code=400, detail="Invalid text content")
+        # Générer un nom de fichier unique
+        output_path = os.path.join(output_dir, f"tts_output_{hash(request.text)}.wav")
         
-        # Création d'un fichier temporaire pour le texte
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_input:
-            temp_input.write(text)
-            temp_input_path = temp_input.name
+        # Générer l'audio
+        audio_path = generate_tts_audio(request.text, output_path)
         
-        # Création d'un fichier temporaire pour l'audio
-        temp_output_path = temp_input_path.replace('.txt', '.mp3')
+        return {"audio_path": audio_path}
         
-        try:
-            # Génération de l'audio
-            generate_audio(temp_input_path, temp_output_path)
-            
-            # Lecture du fichier audio généré
-            with open(temp_output_path, 'rb') as audio_file:
-                audio_content = audio_file.read()
-            
-            return {"audio_path": temp_output_path}
-            
-        finally:
-            # Nettoyage des fichiers temporaires
-            if os.path.exists(temp_input_path):
-                os.unlink(temp_input_path)
-            if os.path.exists(temp_output_path):
-                os.unlink(temp_output_path)
-                
     except Exception as e:
-        logging.error(f"Erreur lors de la génération de l'audio : {e}")
+        logging.error(f"Erreur lors de la génération de l'audio: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) 

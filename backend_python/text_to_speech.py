@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional
 from pydantic import BaseModel
 from TTS.api import TTS
 from num2words import num2words
-from download_models import TTS_MODEL
+from config import TTS_MODEL, TTS_MODEL_NAME, TTS_DIR
 
 # Configuration des logs
 logging.basicConfig(
@@ -63,7 +63,7 @@ def split_text_for_tts(text: str, max_length: int = MAX_TEXT_LENGTH) -> list[str
     
     return chunks
 
-def generate_tts_audio(input_path: str, output_path: str):
+def generate_audio(input_path: str, output_path: str):
     """Génère un audio à partir du résumé texte"""
     tts = None
     try:
@@ -82,7 +82,7 @@ def generate_tts_audio(input_path: str, output_path: str):
         logging.info(f"📝 Texte divisé en {len(text_chunks)} morceaux")
 
         # Chargement du modèle
-        tts = TTS(model_name=TTS_MODEL, progress_bar=False).to("cpu")
+        tts = TTS(model_name=TTS_MODEL_NAME).to("cpu")
 
         # Sélection dynamique d'un locuteur et langue
         speaker = tts.speakers[0] if tts.speakers else None
@@ -139,7 +139,7 @@ def main():
     output_file = f"./static/file/{audio_id}/audio_resume.mp3"
 
     try:
-        generate_tts_audio(input_file, output_file)
+        generate_audio(input_file, output_file)
         sys.exit(0)
     except FileNotFoundError as e:
         logging.error(str(e))
