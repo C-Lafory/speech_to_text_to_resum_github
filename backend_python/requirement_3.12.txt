@@ -1,0 +1,28 @@
+# Traitement audio
+ffmpeg-python>=0.2.0
+
+# Transcription avec Whisper
+openai-whisper @ git+https://github.com/openai/whisper.git
+
+# Traitement NLP
+spacy>=3.7.0
+fr_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.7.0/fr_core_news_sm-3.7.0-py3-none-any.whl
+
+# Client Ollama
+ollama>=0.1.6
+
+# Logging structuré
+loguru>=0.7.2
+
+# API et serveur web
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+
+# Modules Python standards utilisés
+# - gc (garbage collector)
+# - shutil (gestion des fichiers)
+# - os (opérations système)
+# - sys (système)
+# - logging (journalisation)
+# - re (expressions régulières)

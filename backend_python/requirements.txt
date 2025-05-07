@@ -1,0 +1,26 @@
+# Guide d'installation des dépendances
+# Ce projet nécessite deux environnements Python différents en raison des incompatibilités de certaines bibliothèques
+
+# 1. Environnement Python 3.10 (pour la synthèse vocale)
+# python3.10 -m venv venv310
+# source venv310/bin/activate
+# pip install -r requirement_3.10.txt
+#
+# Cet environnement est utilisé pour :
+# - Coqui TTS (synthèse vocale)
+# - num2words (conversion des nombres en mots)
+# - ffmpeg-python (traitement audio)
+
+# 2. Environnement Python 3.12 (pour les autres fonctionnalités)
+# python3.12 -m venv venv312
+# source venv312/bin/activate
+# pip install -r requirement_3.12.txt
+#
+# Cet environnement est utilisé pour :
+# - Whisper (transcription)
+# - Spacy (traitement du langage naturel)
+# - Ollama (résumé de texte)
+# - Autres utilitaires
+
+# Note : Les deux environnements doivent être installés pour que toutes les fonctionnalités soient disponibles.
+# Voir le README.md pour plus de détails sur l'utilisation des différents scripts. 

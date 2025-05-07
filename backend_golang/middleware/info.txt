@@ -1,0 +1,16 @@
+l’avantage du middleware :
+
+C’est que tu centralises la logique de vérification : au lieu de copier le même checkToken() dans chaque handler, t’as juste à dire :
+
+r.Handle("/user/profile", AuthMiddleware(ProfileHandler(db))).Methods("GET")
+
+Et tu es sûr que :
+
+    Le token est bien là ✅
+
+    Il est bien structuré ✅
+
+    Il existe dans ta base ✅
+
+    Il n’est pas expiré ✅
+

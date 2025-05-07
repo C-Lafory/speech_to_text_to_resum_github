@@ -1,0 +1,16 @@
+# Synthèse vocale (nécessite Python 3.10)
+TTS==0.22.0
+num2words==0.5.14
+ffmpeg-python==0.2.0
+
+# API et serveur web
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+
+# Modules Python standards utilisés
+# - gc (garbage collector)
+# - os (opérations système)
+# - sys (système)
+# - logging (journalisation)
+# - re (expressions régulières)

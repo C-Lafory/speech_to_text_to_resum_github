@@ -1,0 +1,27 @@
+# Ignorer les environnements virtuels Python
+venv*/
+*.venv/
+env/
+*.env/
+
+# Ignorer le dossier des modèles
+models/
+
+# Ignorer le dossier static
+static/
+
+# Ignorer le fichier download_models.py
+backend_python/download_models.py
+
+# Ignorer les fichiers compilés Python
+__pycache__/
+*.py[cod]
+
+# Ignorer les fichiers de logs
+*.log
+
+# Ignorer les fichiers temporaires
+*.tmp
+*.swp
+*.swo
+.DS_Store

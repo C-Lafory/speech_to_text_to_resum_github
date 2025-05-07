@@ -1,0 +1,32 @@
+# Utilisation de Python 3.12 pour les autres fonctionnalités
+FROM python:3.12-slim
+
+# Création du répertoire de travail
+WORKDIR /app
+
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y \
+    git \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copie des fichiers de dépendances
+COPY requirement_3.12.txt .
+
+# Installation des dépendances Python
+RUN pip install --no-cache-dir -r requirement_3.12.txt
+
+# Copie du code source
+COPY transcription.py .
+COPY resume.py .
+COPY download_models.py .
+COPY init_main.sh .
+
+# Rendre le script exécutable
+RUN chmod +x init_main.sh
+
+# Exposition du port
+EXPOSE 8000
+
+# Commande de démarrage
+CMD ["uvicorn", "main_api:app", "--host", "0.0.0.0", "--port", "8000"] 

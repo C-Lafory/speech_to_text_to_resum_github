@@ -1,0 +1,78 @@
+# Fichiers binaires et exécutables
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+dist/
+
+# Fichiers de dépendances
+vendor/
+
+# Fichiers de configuration locaux
+.env
+.env.local
+.env.*.local
+config.local.yaml
+config.dev.yaml
+
+# Fichiers de logs
+*.log
+logs/
+
+# Fichiers temporaires
+tmp/
+temp/
+*.tmp
+
+# Fichiers IDE et éditeurs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers de build
+build/
+*.o
+*.a
+
+# Fichiers de test
+coverage.txt
+coverage.html
+*.cover
+
+# Fichiers de cache
+.cache/
+*.cache
+
+# Fichiers de modèles générés
+*.gen.go
+*.pb.go
+
+# Fichiers de documentation générés
+docs/generated/
+
+# Fichiers de migration de base de données
+migrations/*.sql
+migrations/*.sqlite
+
+# Fichiers de certificats et clés
+*.pem
+*.key
+*.crt
+*.csr
+*.srl
+*.p12
+*.pfx
+
+# Fichiers de configuration spécifiques à l'environnement
+config.prod.yaml
+config.staging.yaml

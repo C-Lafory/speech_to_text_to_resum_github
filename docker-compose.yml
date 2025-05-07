@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Service principal (Python 3.12)
+  main_backend:
+    build:
+      context: ./backend_python
+      dockerfile: Dockerfile.main
+    volumes:
+      - ./backend_python:/app
+      - ./models:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}  # Clé API partagée
+    ports:
+      - "8000:8000"
+    networks:
+      - internal_network
+
+  # Service TTS (Python 3.10)
+  tts_backend:
+    build:
+      context: ./backend_python
+      dockerfile: Dockerfile.tts
+    volumes:
+      - ./backend_python:/app
+      - ./models:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}  # Clé API partagée
+    ports:
+      - "8001:8001"
+    networks:
+      - internal_network
+
+networks:
+  internal_network:
+    internal: true  # Réseau interne uniquement 
