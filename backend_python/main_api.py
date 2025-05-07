@@ -1,10 +1,14 @@
+import os
+import logging
 from fastapi import FastAPI, UploadFile, HTTPException, Depends, Header
 from fastapi.security import APIKeyHeader
-from typing import Optional
-import os
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
 import secrets
 from transcription import transcribe_audio
 from resume import generate_summary
+from download_models import MODEL_DIR
 
 app = FastAPI()
 

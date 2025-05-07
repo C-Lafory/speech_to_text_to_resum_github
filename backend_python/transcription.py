@@ -1,9 +1,12 @@
-import whisper
 import os
-import ffmpeg
-import sys
 import logging
+import whisper
+import spacy
+import ffmpeg
 import gc
+import sys
+from typing import Dict, Any, Optional
+from pydantic import BaseModel
 from download_models import MODEL_DIR, WHISPER_MODEL_SIZE
 
 # Configuration

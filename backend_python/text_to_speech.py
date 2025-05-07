@@ -4,6 +4,9 @@ import sys
 import logging
 import ffmpeg
 import gc
+import tempfile
+from typing import Dict, Any, Optional
+from pydantic import BaseModel
 from TTS.api import TTS
 from num2words import num2words
 from download_models import TTS_MODEL

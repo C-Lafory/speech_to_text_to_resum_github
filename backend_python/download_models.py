@@ -16,10 +16,19 @@ IS_MAIN_SERVICE = os.path.exists("transcription.py")
 
 # Importer les modules en fonction du service
 if IS_MAIN_SERVICE:
-    import whisper
-    import spacy
+    try:
+        import whisper
+        import spacy
+    except ImportError as e:
+        logging.error(f"❌ Erreur lors de l'importation des modules pour le service principal : {e}")
+        raise
+
 if IS_TTS_SERVICE:
-    from TTS.api import TTS
+    try:
+        from TTS.api import TTS
+    except ImportError as e:
+        logging.error(f"❌ Erreur lors de l'importation des modules pour le service TTS : {e}")
+        raise
 
 def check_disk_space():
     """Vérifie l'espace disque disponible"""
@@ -53,7 +62,7 @@ def verify_models():
     # Vérification TTS (uniquement pour le service TTS)
     if IS_TTS_SERVICE:
         try:
-            TTS(model_name=TTS_MODEL, progress_bar=False)
+            tts = TTS(model_name=TTS_MODEL, progress_bar=False)
             models_status["tts"] = True
         except Exception:
             pass
