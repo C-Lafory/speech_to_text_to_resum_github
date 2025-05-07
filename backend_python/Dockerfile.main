@@ -22,17 +22,17 @@ COPY requirement_3.12.txt .
 
 # Installation des dépendances Python
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirement_3.12.txt && \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Installation d'Ollama
-RUN curl -fsSL https://ollama.com/install.sh | sh
+    pip install --no-cache-dir -r requirement_3.12.txt
 
 # Création du dossier models
 RUN mkdir -p models
 
 # Copie du code source
 COPY . .
+
+# Rendre les scripts exécutables
+RUN chmod +x init_main.sh && \
+    chmod +x init_tts.sh
 
 # Exposition du port
 EXPOSE 8000 

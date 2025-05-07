@@ -2,15 +2,9 @@ import os
 import sys
 import shutil
 import logging
-import subprocess
 import requests
 from pathlib import Path
 import torch
-import whisper
-import spacy
-from TTS.utils.manage import ModelManager
-from TTS.utils.synthesizer import Synthesizer
-from TTS.api import TTS
 from config import IS_MAIN_SERVICE, IS_TTS_SERVICE, OLLAMA_MODEL
 
 # Configuration des logs
@@ -29,6 +23,9 @@ TTS_MODEL = "tts_models/fr/css10/vits"  # Alias pour TTS_MODEL_NAME
 TTS_MODEL_NAME = "tts_models/fr/css10/vits"
 SPACY_MODEL_NAME = "fr_core_news_md"
 
+# Configuration Ollama
+OLLAMA_API_URL = "http://0.0.0.0:11434/api"
+
 # Création des répertoires
 MODELS_DIR.mkdir(exist_ok=True)
 WHISPER_DIR = MODELS_DIR / "whisper"
@@ -36,12 +33,43 @@ TTS_DIR = MODELS_DIR / "tts"
 SPACY_DIR = MODELS_DIR / "spacy"
 OLLAMA_DIR = MODELS_DIR / "ollama"
 
+# Import conditionnel des modules
+if IS_MAIN_SERVICE:
+    import whisper
+    import spacy
+
+if IS_TTS_SERVICE:
+    from TTS.utils.manage import ModelManager
+    from TTS.utils.synthesizer import Synthesizer
+    from TTS.api import TTS
+
 def check_disk_space():
     """Vérifie l'espace disque disponible"""
     total, used, free = shutil.disk_usage("/")
     free_gb = free // (2**30)  # Conversion en GB
     if free_gb < MIN_DISK_SPACE_GB:
         raise RuntimeError(f"❌ Espace disque insuffisant. {free_gb}GB disponible, {MIN_DISK_SPACE_GB}GB requis.")
+
+def check_ollama_status():
+    """Vérifie le statut d'Ollama via l'API"""
+    try:
+        response = requests.get(f"{OLLAMA_API_URL}/version")
+        if response.status_code == 200:
+            return True
+    except requests.exceptions.RequestException:
+        return False
+    return False
+
+def check_mistral_model():
+    """Vérifie si le modèle Mistral est disponible"""
+    try:
+        response = requests.get(f"{OLLAMA_API_URL}/tags")
+        if response.status_code == 200:
+            models = response.json().get("models", [])
+            return any(model["name"] == OLLAMA_MODEL for model in models)
+    except requests.exceptions.RequestException:
+        return False
+    return False
 
 def verify_models():
     """Vérifie si tous les modèles sont présents"""
@@ -64,25 +92,17 @@ def verify_models():
             models_status["spacy"] = True
         except (OSError, ImportError):
             pass
+        
+        # Vérification Ollama et Mistral
+        models_status["ollama"] = check_ollama_status()
+        if models_status["ollama"]:
+            models_status["mistral"] = check_mistral_model()
     
     # Vérification TTS (uniquement pour le service TTS)
     if IS_TTS_SERVICE:
         try:
             tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False)
             models_status["tts"] = True
-        except Exception:
-            pass
-    
-    # Vérification Ollama (uniquement pour le service principal)
-    if IS_MAIN_SERVICE:
-        try:
-            result = subprocess.run(["ollama", "--version"], 
-                                 capture_output=True, text=True)
-            if result.returncode == 0:
-                models_status["ollama"] = True
-                result = subprocess.run(["ollama", "list"], 
-                                     capture_output=True, text=True)
-                models_status["mistral"] = OLLAMA_MODEL in result.stdout
         except Exception:
             pass
     
