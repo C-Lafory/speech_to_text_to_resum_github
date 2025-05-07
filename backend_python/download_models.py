@@ -1,10 +1,7 @@
 import os
-import whisper
 import logging
 import subprocess
-import spacy
 import shutil
-from TTS.api import TTS
 
 # Configuration
 MODEL_DIR = "models"
@@ -12,6 +9,17 @@ WHISPER_MODEL_SIZE = "medium"
 SPACY_MODEL = "fr_core_news_sm"
 TTS_MODEL = "tts_models/multilingual/multi-dataset/your_tts"
 MIN_DISK_SPACE_GB = 10  # Espace disque minimum requis en GB
+
+# Déterminer quel service exécute le script
+IS_TTS_SERVICE = os.path.exists("text_to_speech.py")
+IS_MAIN_SERVICE = os.path.exists("transcription.py")
+
+# Importer les modules en fonction du service
+if IS_MAIN_SERVICE:
+    import whisper
+    import spacy
+if IS_TTS_SERVICE:
+    from TTS.api import TTS
 
 def check_disk_space():
     """Vérifie l'espace disque disponible"""
@@ -30,38 +38,41 @@ def verify_models():
         "mistral": False
     }
     
-    # Vérification Whisper
-    whisper_model_path = os.path.join(MODEL_DIR, WHISPER_MODEL_SIZE + ".pt")
-    models_status["whisper"] = os.path.isfile(whisper_model_path)
-    
-    # Vérification Spacy
-    try:
-        spacy.load(SPACY_MODEL)
-        models_status["spacy"] = True
-    except OSError:
-        pass
-    
-    # Vérification TTS
-    try:
-        TTS(model_name=TTS_MODEL, progress_bar=False)
-        models_status["tts"] = True
-    except Exception:
-        pass
-    
-    # Vérification Ollama
-    try:
-        subprocess.run(["ollama", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        models_status["ollama"] = True
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        pass
-    
-    # Vérification Mistral
-    if models_status["ollama"]:
+    # Vérification Whisper (uniquement pour le service principal)
+    if IS_MAIN_SERVICE:
+        whisper_model_path = os.path.join(MODEL_DIR, WHISPER_MODEL_SIZE + ".pt")
+        models_status["whisper"] = os.path.isfile(whisper_model_path)
+        
+        # Vérification Spacy
         try:
-            subprocess.run(["ollama", "list"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            models_status["mistral"] = "mistral:7b" in subprocess.run(["ollama", "list"], capture_output=True, text=True).stdout
-        except subprocess.CalledProcessError:
+            spacy.load(SPACY_MODEL)
+            models_status["spacy"] = True
+        except OSError:
             pass
+    
+    # Vérification TTS (uniquement pour le service TTS)
+    if IS_TTS_SERVICE:
+        try:
+            TTS(model_name=TTS_MODEL, progress_bar=False)
+            models_status["tts"] = True
+        except Exception:
+            pass
+    
+    # Vérification Ollama (uniquement pour le service principal)
+    if IS_MAIN_SERVICE:
+        try:
+            subprocess.run(["ollama", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            models_status["ollama"] = True
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            pass
+        
+        # Vérification Mistral
+        if models_status["ollama"]:
+            try:
+                subprocess.run(["ollama", "list"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                models_status["mistral"] = "mistral:7b" in subprocess.run(["ollama", "list"], capture_output=True, text=True).stdout
+            except subprocess.CalledProcessError:
+                pass
     
     return models_status
 
@@ -75,64 +86,67 @@ def download_models():
         logging.info(f"📁 Création du dossier des modèles : {MODEL_DIR}")
         os.makedirs(MODEL_DIR, exist_ok=True)
 
-    # 1. Vérification et téléchargement du modèle Whisper
-    logging.info(f"🔍 Vérification du modèle Whisper ({WHISPER_MODEL_SIZE})...")
-    whisper_model_path = os.path.join(MODEL_DIR, WHISPER_MODEL_SIZE + ".pt")
-    if not os.path.isfile(whisper_model_path):
-        logging.info(f"⬇️ Téléchargement du modèle Whisper ({WHISPER_MODEL_SIZE})...")
-        whisper.load_model(WHISPER_MODEL_SIZE, download_root=MODEL_DIR)
-        logging.info(f"✅ Modèle Whisper téléchargé dans {MODEL_DIR}")
-    else:
-        logging.info(f"✅ Modèle Whisper déjà présent : {whisper_model_path}")
-
-    # 2. Vérification et téléchargement du modèle Spacy
-    logging.info(f"🔍 Vérification du modèle Spacy ({SPACY_MODEL})...")
-    try:
-        spacy.load(SPACY_MODEL)
-        logging.info(f"✅ Modèle Spacy déjà présent")
-    except OSError:
-        logging.info(f"⬇️ Téléchargement du modèle Spacy ({SPACY_MODEL})...")
-        spacy.cli.download(SPACY_MODEL)
-        logging.info(f"✅ Modèle Spacy téléchargé")
-
-    # 3. Vérification et téléchargement du modèle TTS
-    logging.info(f"🔍 Vérification du modèle TTS ({TTS_MODEL})...")
-    try:
-        tts = TTS(model_name=TTS_MODEL, progress_bar=False)
-        if tts.speakers and len(tts.speakers) > 0:
-            logging.info(f"✅ Modèle TTS déjà présent et fonctionnel")
+    # 1. Vérification et téléchargement du modèle Whisper (uniquement pour le service principal)
+    if IS_MAIN_SERVICE:
+        logging.info(f"🔍 Vérification du modèle Whisper ({WHISPER_MODEL_SIZE})...")
+        whisper_model_path = os.path.join(MODEL_DIR, WHISPER_MODEL_SIZE + ".pt")
+        if not os.path.isfile(whisper_model_path):
+            logging.info(f"⬇️ Téléchargement du modèle Whisper ({WHISPER_MODEL_SIZE})...")
+            whisper.load_model(WHISPER_MODEL_SIZE, download_root=MODEL_DIR)
+            logging.info(f"✅ Modèle Whisper téléchargé dans {MODEL_DIR}")
         else:
-            raise RuntimeError("Modèle TTS présent mais pas de locuteurs disponibles")
-    except Exception as e:
-        logging.info(f"⬇️ Téléchargement du modèle TTS ({TTS_MODEL})...")
-        tts = TTS(model_name=TTS_MODEL, progress_bar=True)
-        if not tts.speakers or len(tts.speakers) == 0:
-            raise RuntimeError("Modèle TTS téléchargé mais pas de locuteurs disponibles")
-        logging.info(f"✅ Modèle TTS téléchargé")
+            logging.info(f"✅ Modèle Whisper déjà présent : {whisper_model_path}")
 
-    # 4. Vérification et installation du client Ollama
-    logging.info("🔍 Vérification du client Ollama...")
-    try:
-        subprocess.run(["ollama", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logging.info("✅ Client Ollama déjà installé.")
-    except FileNotFoundError:
-        logging.info("⬇️ Installation du client Ollama...")
+        # 2. Vérification et téléchargement du modèle Spacy
+        logging.info(f"🔍 Vérification du modèle Spacy ({SPACY_MODEL})...")
         try:
-            install_command = "curl -fsSL https://ollama.com/install.sh | sh"
-            subprocess.run(install_command, check=True, shell=True)
-            logging.info("✅ Client Ollama installé avec succès.")
-        except Exception as e:
-            logging.error(f"❌ Échec de l'installation du client Ollama : {e}")
-            raise RuntimeError("Ollama doit être installé manuellement. Consultez https://ollama.com pour plus d'informations.")
+            spacy.load(SPACY_MODEL)
+            logging.info(f"✅ Modèle Spacy déjà présent")
+        except OSError:
+            logging.info(f"⬇️ Téléchargement du modèle Spacy ({SPACY_MODEL})...")
+            spacy.cli.download(SPACY_MODEL)
+            logging.info(f"✅ Modèle Spacy téléchargé")
 
-    # 5. Vérification du modèle Mistral via Ollama
-    logging.info("🔍 Vérification du modèle Mistral via Ollama...")
-    try:
-        subprocess.run(["ollama", "pull", "mistral:7b"], check=True)
-        logging.info("✅ Modèle Mistral vérifié/installé via Ollama")
-    except Exception as e:
-        logging.error(f"❌ Erreur lors de la vérification du modèle Mistral : {e}")
-        raise
+    # 3. Vérification et téléchargement du modèle TTS (uniquement pour le service TTS)
+    if IS_TTS_SERVICE:
+        logging.info(f"🔍 Vérification du modèle TTS ({TTS_MODEL})...")
+        try:
+            tts = TTS(model_name=TTS_MODEL, progress_bar=False)
+            if tts.speakers and len(tts.speakers) > 0:
+                logging.info(f"✅ Modèle TTS déjà présent et fonctionnel")
+            else:
+                raise RuntimeError("Modèle TTS présent mais pas de locuteurs disponibles")
+        except Exception as e:
+            logging.info(f"⬇️ Téléchargement du modèle TTS ({TTS_MODEL})...")
+            tts = TTS(model_name=TTS_MODEL, progress_bar=True)
+            if not tts.speakers or len(tts.speakers) == 0:
+                raise RuntimeError("Modèle TTS téléchargé mais pas de locuteurs disponibles")
+            logging.info(f"✅ Modèle TTS téléchargé")
+
+    # 4. Vérification et installation du client Ollama (uniquement pour le service principal)
+    if IS_MAIN_SERVICE:
+        logging.info("🔍 Vérification du client Ollama...")
+        try:
+            subprocess.run(["ollama", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            logging.info("✅ Client Ollama déjà installé.")
+        except FileNotFoundError:
+            logging.info("⬇️ Installation du client Ollama...")
+            try:
+                install_command = "curl -fsSL https://ollama.com/install.sh | sh"
+                subprocess.run(install_command, check=True, shell=True)
+                logging.info("✅ Client Ollama installé avec succès.")
+            except Exception as e:
+                logging.error(f"❌ Échec de l'installation du client Ollama : {e}")
+                raise RuntimeError("Ollama doit être installé manuellement. Consultez https://ollama.com pour plus d'informations.")
+
+        # 5. Vérification du modèle Mistral via Ollama
+        logging.info("🔍 Vérification du modèle Mistral via Ollama...")
+        try:
+            subprocess.run(["ollama", "pull", "mistral:7b"], check=True)
+            logging.info("✅ Modèle Mistral vérifié/installé via Ollama")
+        except Exception as e:
+            logging.error(f"❌ Erreur lors de la vérification du modèle Mistral : {e}")
+            raise
 
     # Vérification finale
     models_status = verify_models()
