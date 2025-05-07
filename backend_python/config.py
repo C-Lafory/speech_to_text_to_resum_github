@@ -9,7 +9,7 @@ TTS_MODEL_DIR = MODELS_DIR / "tts"
 SPACY_MODEL_DIR = MODELS_DIR / "spacy"
 
 # Configuration des modèles
-WHISPER_MODEL_SIZE = "medium"
+WHISPER_MODEL_SIZE = "base"
 SPACY_MODEL = "fr_core_news_sm"
 TTS_MODEL = "tts_models/multilingual/multi-dataset/your_tts"
 OLLAMA_MODEL = "mistral:7b"
