@@ -7,16 +7,6 @@ from pathlib import Path
 import torch
 from config import IS_MAIN_SERVICE, IS_TTS_SERVICE, OLLAMA_MODEL
 
-# Import conditionnel des modules
-if IS_MAIN_SERVICE:
-    import whisper
-    import spacy
-
-if IS_TTS_SERVICE:
-    from TTS.utils.manage import ModelManager
-    from TTS.utils.synthesizer import Synthesizer
-    from TTS.api import TTS
-
 # Configuration des logs
 logging.basicConfig(
     level=logging.INFO,
@@ -42,6 +32,20 @@ WHISPER_DIR = MODELS_DIR / "whisper"
 TTS_DIR = MODELS_DIR / "tts"
 SPACY_DIR = MODELS_DIR / "spacy"
 OLLAMA_DIR = MODELS_DIR / "ollama"
+
+def get_whisper():
+    """Importe whisper uniquement si nécessaire"""
+    if IS_MAIN_SERVICE:
+        import whisper
+        return whisper
+    return None
+
+def get_spacy():
+    """Importe spacy uniquement si nécessaire"""
+    if IS_MAIN_SERVICE:
+        import spacy
+        return spacy
+    return None
 
 def check_disk_space():
     """Vérifie l'espace disque disponible"""
@@ -85,15 +89,19 @@ def verify_models():
         })
         
         # Vérification Whisper
-        whisper_model_path = WHISPER_DIR / f"{WHISPER_MODEL_SIZE}.pt"
-        models_status["whisper"] = whisper_model_path.exists()
+        whisper = get_whisper()
+        if whisper:
+            whisper_model_path = WHISPER_DIR / f"{WHISPER_MODEL_SIZE}.pt"
+            models_status["whisper"] = whisper_model_path.exists()
         
         # Vérification Spacy
-        try:
-            spacy.load(SPACY_MODEL_NAME)
-            models_status["spacy"] = True
-        except (OSError, ImportError):
-            pass
+        spacy = get_spacy()
+        if spacy:
+            try:
+                spacy.load(SPACY_MODEL_NAME)
+                models_status["spacy"] = True
+            except (OSError, ImportError):
+                pass
         
         # Vérification Ollama et Mistral
         models_status["ollama"] = check_ollama_status()
@@ -106,6 +114,7 @@ def verify_models():
             "tts": False
         })
         try:
+            from TTS.api import TTS
             tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False)
             models_status["tts"] = True
         except Exception:
@@ -121,28 +130,33 @@ def download_models():
     # 1. Vérification et téléchargement du modèle Whisper
     if IS_MAIN_SERVICE:
         logging.info(f"🔍 Vérification du modèle Whisper ({WHISPER_MODEL_SIZE})...")
-        whisper_model_path = WHISPER_DIR / f"{WHISPER_MODEL_SIZE}.pt"
-        if not whisper_model_path.exists():
-            logging.info(f"⬇️ Téléchargement du modèle Whisper ({WHISPER_MODEL_SIZE})...")
-            whisper.load_model(WHISPER_MODEL_SIZE, download_root=str(WHISPER_DIR))
-            logging.info(f"✅ Modèle Whisper téléchargé dans {WHISPER_DIR}")
-        else:
-            logging.info(f"✅ Modèle Whisper déjà présent : {whisper_model_path}")
+        whisper = get_whisper()
+        if whisper:
+            whisper_model_path = WHISPER_DIR / f"{WHISPER_MODEL_SIZE}.pt"
+            if not whisper_model_path.exists():
+                logging.info(f"⬇️ Téléchargement du modèle Whisper ({WHISPER_MODEL_SIZE})...")
+                whisper.load_model(WHISPER_MODEL_SIZE, download_root=str(WHISPER_DIR))
+                logging.info(f"✅ Modèle Whisper téléchargé dans {WHISPER_DIR}")
+            else:
+                logging.info(f"✅ Modèle Whisper déjà présent : {whisper_model_path}")
 
         # 2. Vérification et téléchargement du modèle Spacy
         logging.info(f"🔍 Vérification du modèle Spacy ({SPACY_MODEL_NAME})...")
-        try:
-            spacy.load(SPACY_MODEL_NAME)
-            logging.info(f"✅ Modèle Spacy déjà présent")
-        except (OSError, ImportError):
-            logging.info(f"⬇️ Téléchargement du modèle Spacy ({SPACY_MODEL_NAME})...")
-            spacy.cli.download(SPACY_MODEL_NAME)
-            logging.info(f"✅ Modèle Spacy téléchargé")
+        spacy = get_spacy()
+        if spacy:
+            try:
+                spacy.load(SPACY_MODEL_NAME)
+                logging.info(f"✅ Modèle Spacy déjà présent")
+            except (OSError, ImportError):
+                logging.info(f"⬇️ Téléchargement du modèle Spacy ({SPACY_MODEL_NAME})...")
+                spacy.cli.download(SPACY_MODEL_NAME)
+                logging.info(f"✅ Modèle Spacy téléchargé")
 
     # 3. Vérification et téléchargement du modèle TTS
     if IS_TTS_SERVICE:
         logging.info(f"🔍 Vérification du modèle TTS ({TTS_MODEL_NAME})...")
         try:
+            from TTS.api import TTS
             tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False)
             if tts.speakers and len(tts.speakers) > 0:
                 logging.info(f"✅ Modèle TTS déjà présent et fonctionnel")
