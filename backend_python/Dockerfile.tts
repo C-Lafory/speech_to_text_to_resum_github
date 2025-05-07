@@ -15,6 +15,9 @@ COPY requirement_3.10.txt .
 # Installation des dépendances Python
 RUN pip install --no-cache-dir -r requirement_3.10.txt
 
+# Création du dossier models
+RUN mkdir -p models
+
 # Copie du code source
 COPY text_to_speech.py .
 COPY download_models.py .
@@ -22,6 +25,9 @@ COPY init_tts.sh .
 
 # Rendre le script exécutable
 RUN chmod +x init_tts.sh
+
+# Téléchargement des modèles
+RUN python download_models.py
 
 # Commande par défaut
 CMD ["./init_tts.sh"] 

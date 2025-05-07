@@ -16,6 +16,9 @@ COPY requirement_3.12.txt .
 # Installation des dépendances Python
 RUN pip install --no-cache-dir -r requirement_3.12.txt
 
+# Création du dossier models
+RUN mkdir -p models
+
 # Copie du code source
 COPY transcription.py .
 COPY resume.py .
@@ -24,6 +27,9 @@ COPY init_main.sh .
 
 # Rendre le script exécutable
 RUN chmod +x init_main.sh
+
+# Téléchargement des modèles
+RUN python download_models.py
 
 # Exposition du port
 EXPOSE 8000

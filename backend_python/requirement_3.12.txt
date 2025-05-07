@@ -2,7 +2,7 @@
 ffmpeg-python>=0.2.0
 
 # Transcription avec Whisper
-openai-whisper @ git+https://github.com/openai/whisper.git
+openai-whisper>=20231117
 
 # Traitement NLP
 spacy>=3.7.0
