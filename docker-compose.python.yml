@@ -20,15 +20,6 @@ services:
       - MAIN_API_PORT=8000
       - OLLAMA_HOST=localhost
       - OLLAMA_PORT=11434
-      - CUDA_VISIBLE_DEVICES=0
-      - NVIDIA_VISIBLE_DEVICES=all
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     command: bash -c "chmod +x /app/init_main.sh && bash /app/init_main.sh"
     networks:
       - app_network
@@ -47,15 +38,6 @@ services:
       - PYTHONPATH=/app
       - TTS_MODEL_PATH=/app/models/tts
       - TTS_API_PORT=8001
-      - CUDA_VISIBLE_DEVICES=0
-      - NVIDIA_VISIBLE_DEVICES=all
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     command: bash -c "chmod +x /app/init_tts.sh && bash /app/init_tts.sh"
     networks:
       - app_network
