@@ -20,7 +20,7 @@ services:
       - MAIN_API_PORT=8000
       - OLLAMA_HOST=localhost
       - OLLAMA_PORT=11434
-    command: ./init_main.sh
+    command: bash -c "chmod +x /app/init_main.sh && bash /app/init_main.sh"
     networks:
       - app_network
 
@@ -38,7 +38,7 @@ services:
       - PYTHONPATH=/app
       - TTS_MODEL_PATH=/app/models/tts
       - TTS_API_PORT=8001
-    command: ./init_tts.sh
+    command: bash -c "chmod +x /app/init_tts.sh && bash /app/init_tts.sh"
     networks:
       - app_network
 
