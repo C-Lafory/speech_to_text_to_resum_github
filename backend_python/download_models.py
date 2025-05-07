@@ -7,6 +7,16 @@ from pathlib import Path
 import torch
 from config import IS_MAIN_SERVICE, IS_TTS_SERVICE, OLLAMA_MODEL
 
+# Import conditionnel des modules
+if IS_MAIN_SERVICE:
+    import whisper
+    import spacy
+
+if IS_TTS_SERVICE:
+    from TTS.utils.manage import ModelManager
+    from TTS.utils.synthesizer import Synthesizer
+    from TTS.api import TTS
+
 # Configuration des logs
 logging.basicConfig(
     level=logging.INFO,
@@ -24,7 +34,7 @@ TTS_MODEL_NAME = "tts_models/fr/css10/vits"
 SPACY_MODEL_NAME = "fr_core_news_md"
 
 # Configuration Ollama
-OLLAMA_API_URL = "http://0.0.0.0:11434/api"
+OLLAMA_API_URL = "http://ollama:11434/api"
 
 # Création des répertoires
 MODELS_DIR.mkdir(exist_ok=True)
@@ -32,16 +42,6 @@ WHISPER_DIR = MODELS_DIR / "whisper"
 TTS_DIR = MODELS_DIR / "tts"
 SPACY_DIR = MODELS_DIR / "spacy"
 OLLAMA_DIR = MODELS_DIR / "ollama"
-
-# Import conditionnel des modules
-if IS_MAIN_SERVICE:
-    import whisper
-    import spacy
-
-if IS_TTS_SERVICE:
-    from TTS.utils.manage import ModelManager
-    from TTS.utils.synthesizer import Synthesizer
-    from TTS.api import TTS
 
 def check_disk_space():
     """Vérifie l'espace disque disponible"""
@@ -73,16 +73,18 @@ def check_mistral_model():
 
 def verify_models():
     """Vérifie si tous les modèles sont présents"""
-    models_status = {
-        "whisper": False,
-        "spacy": False,
-        "tts": False,
-        "ollama": False,
-        "mistral": False
-    }
+    models_status = {}
     
-    # Vérification Whisper (uniquement pour le service principal)
+    # Vérification des modèles pour le service principal
     if IS_MAIN_SERVICE:
+        models_status.update({
+            "whisper": False,
+            "spacy": False,
+            "ollama": False,
+            "mistral": False
+        })
+        
+        # Vérification Whisper
         whisper_model_path = WHISPER_DIR / f"{WHISPER_MODEL_SIZE}.pt"
         models_status["whisper"] = whisper_model_path.exists()
         
@@ -98,8 +100,11 @@ def verify_models():
         if models_status["ollama"]:
             models_status["mistral"] = check_mistral_model()
     
-    # Vérification TTS (uniquement pour le service TTS)
+    # Vérification des modèles pour le service TTS
     if IS_TTS_SERVICE:
+        models_status.update({
+            "tts": False
+        })
         try:
             tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False)
             models_status["tts"] = True
