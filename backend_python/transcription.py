@@ -7,7 +7,7 @@ import gc
 import sys
 from typing import Dict, Any, Optional
 from pydantic import BaseModel
-from download_models import MODEL_DIR, WHISPER_MODEL_SIZE
+from download_models import MODELS_DIR, WHISPER_MODEL_SIZE
 
 # Configuration
 AUDIO_UPLOAD_DIR = "static/upload/audio"
@@ -58,11 +58,11 @@ def transcribe_audio(audio_id: str, audio_ext: str) -> str:
 
         # Étape 2 : transcription
         logging.info(f"🧠 Chargement du modèle Whisper ({WHISPER_MODEL_SIZE})...")
-        model_path = os.path.join(MODEL_DIR, WHISPER_MODEL_SIZE + ".pt")
+        model_path = os.path.join(MODELS_DIR, WHISPER_MODEL_SIZE + ".pt")
         if not os.path.isfile(model_path):
             raise FileNotFoundError(f"❌ Modèle Whisper non trouvé à {model_path}. Exécutez d'abord download_models.py")
 
-        model = whisper.load_model(WHISPER_MODEL_SIZE, download_root=MODEL_DIR)
+        model = whisper.load_model(WHISPER_MODEL_SIZE, download_root=MODELS_DIR)
         
         logging.info(f"✍️ Transcription en cours de {wav_output_path}...")
         result = model.transcribe(wav_output_path, language="fr")

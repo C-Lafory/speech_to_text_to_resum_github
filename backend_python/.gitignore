@@ -10,8 +10,6 @@ models/
 # Ignorer le dossier static
 static/
 
-# Ignorer le fichier download_models.py
-backend_python/download_models.py
 
 # Ignorer les fichiers compilés Python
 __pycache__/

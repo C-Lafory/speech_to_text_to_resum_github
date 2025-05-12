@@ -1,164 +1,98 @@
-import os
-import sys
-import shutil
 import logging
+import shutil
 import requests
 from pathlib import Path
-import torch
 from config import IS_MAIN_SERVICE, IS_TTS_SERVICE, OLLAMA_MODEL
 
-# Configuration des logs
+# Configuration logs
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-# Configuration de l'espace disque
-MIN_DISK_SPACE_GB = 5  # Espace disque minimum requis en GB
-
-# Chemins des modèles
-MODELS_DIR = Path("models")
+# Paramètres
+MIN_DISK_SPACE_GB = 5
 WHISPER_MODEL_SIZE = "base"
-TTS_MODEL = "tts_models/fr/css10/vits"  # Alias pour TTS_MODEL_NAME
-TTS_MODEL_NAME = "tts_models/fr/css10/vits"
 SPACY_MODEL_NAME = "fr_core_news_md"
-
-# Configuration Ollama
+TTS_MODEL_NAME = "tts_models/fr/css10/vits"
 OLLAMA_API_URL = "http://ollama:11434/api"
 
-# Création des répertoires
-MODELS_DIR.mkdir(exist_ok=True)
+# Répertoires
+MODELS_DIR = Path("models")
 WHISPER_DIR = MODELS_DIR / "whisper"
-TTS_DIR = MODELS_DIR / "tts"
 SPACY_DIR = MODELS_DIR / "spacy"
-OLLAMA_DIR = MODELS_DIR / "ollama"
-
-def get_whisper():
-    """Importe whisper uniquement si nécessaire"""
-    if IS_MAIN_SERVICE:
-        import whisper
-        return whisper
-    return None
-
-def get_spacy():
-    """Importe spacy uniquement si nécessaire"""
-    if IS_MAIN_SERVICE:
-        import spacy
-        return spacy
-    return None
+TTS_DIR = MODELS_DIR / "tts"
 
 def check_disk_space():
-    """Vérifie l'espace disque disponible"""
-    try:
-        total, used, free = shutil.disk_usage("/")
-        free_gb = free // (2**30)  # Conversion en GB
-        if free_gb < 5:  # 5 GB minimum requis
-            raise Exception(f"Espace disque insuffisant: {free_gb} GB disponibles")
-    except Exception as e:
-        logging.error(f"Erreur lors de la vérification de l'espace disque: {str(e)}")
-        raise
+    """Vérifie l'espace disque disponible."""
+    total, used, free = shutil.disk_usage("/")
+    free_gb = free // (2**30)
+    if free_gb < MIN_DISK_SPACE_GB:
+        raise RuntimeError(f"Espace disque insuffisant : {free_gb} GB disponibles.")
 
-def check_ollama_status():
-    """Vérifie le statut d'Ollama via l'API"""
+def download_main_models():
+    """Téléchargement pour le service principal (transcription, résumé)."""
+    import whisper
+    import spacy
+
+    logging.info("📥 Téléchargement du modèle Whisper...")
+    whisper.load_model(WHISPER_MODEL_SIZE)
+
+    logging.info("📥 Téléchargement du modèle Spacy...")
     try:
-        response = requests.get(f"{OLLAMA_API_URL}/version")
-        if response.status_code == 200:
-            return True
-    except requests.exceptions.RequestException:
+        spacy.load(SPACY_MODEL_NAME)
+    except OSError:
+        from spacy.cli import download
+        download(SPACY_MODEL_NAME)
+        spacy.load(SPACY_MODEL_NAME)
+
+    logging.info("✅ Modèles principaux téléchargés avec succès.")
+
+def ollama_ready() -> bool:
+    """Vérifie si Ollama est joignable."""
+    try:
+        return requests.get(f"{OLLAMA_API_URL}/version").status_code == 200
+    except Exception:
         return False
-    return False
 
-def check_mistral_model():
-    """Vérifie si le modèle Mistral est disponible"""
+def mistral_available() -> bool:
+    """Vérifie si Mistral est déjà présent dans Ollama."""
     try:
         response = requests.get(f"{OLLAMA_API_URL}/tags")
         if response.status_code == 200:
             models = response.json().get("models", [])
-            return any(model["name"] == OLLAMA_MODEL for model in models)
-    except requests.exceptions.RequestException:
+            return any(m["name"] == OLLAMA_MODEL for m in models)
+    except Exception:
         return False
-    return False
 
-def verify_models():
-    """Vérifie si tous les modèles sont présents"""
-    models_status = {}
-    
-    # Vérification des modèles pour le service principal
-    if IS_MAIN_SERVICE:
-        models_status.update({
-            "whisper": False,
-            "spacy": False,
-            "ollama": False,
-            "mistral": False
-        })
-        
-        # Vérification Whisper
-        whisper = get_whisper()
-        if whisper:
-            whisper_model_path = WHISPER_DIR / f"{WHISPER_MODEL_SIZE}.pt"
-            models_status["whisper"] = whisper_model_path.exists()
-        
-        # Vérification Spacy
-        spacy = get_spacy()
-        if spacy:
-            try:
-                spacy.load(SPACY_MODEL_NAME)
-                models_status["spacy"] = True
-            except (OSError, ImportError):
-                pass
-        
-        # Vérification Ollama et Mistral
-        models_status["ollama"] = check_ollama_status()
-        if models_status["ollama"]:
-            models_status["mistral"] = check_mistral_model()
-    
-    # Vérification des modèles pour le service TTS
-    if IS_TTS_SERVICE:
-        models_status.update({
-            "tts": False
-        })
-        try:
-            from TTS.api import TTS
-            tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False)
-            models_status["tts"] = True
-        except Exception:
-            pass
-    
-    return models_status
+def download_tts_model():
+    """Téléchargement pour le service TTS."""
+    from TTS.api import TTS
 
-def download_models():
-    """Télécharge les modèles nécessaires"""
+    logging.info("📥 Téléchargement du modèle TTS...")
+    TTS(model_name=TTS_MODEL_NAME)
+    logging.info("✅ Modèle TTS téléchargé avec succès.")
+
+def main():
     try:
-        # Vérifier l'espace disque
         check_disk_space()
-        
-        # Créer les répertoires
         MODELS_DIR.mkdir(exist_ok=True)
-        
-        # Télécharger les modèles selon le service
+
         if IS_MAIN_SERVICE:
-            # Télécharger Whisper
-            logging.info("Téléchargement du modèle Whisper...")
-            import whisper
-            whisper.load_model(WHISPER_MODEL_SIZE)
-            
-            # Télécharger Spacy
-            logging.info("Téléchargement du modèle Spacy...")
-            import spacy
-            spacy.load(SPACY_MODEL_NAME)
-            
+            if not ollama_ready():
+                raise RuntimeError("❌ Ollama n'est pas disponible sur le port 11434.")
+            if not mistral_available():
+                raise RuntimeError(f"❌ Le modèle '{OLLAMA_MODEL}' n'est pas encore chargé dans Ollama.")
+            download_main_models()
+
         if IS_TTS_SERVICE:
-            # Télécharger TTS
-            logging.info("Téléchargement du modèle TTS...")
-            from TTS.api import TTS
-            TTS(model_name=TTS_MODEL_NAME)
-            
-        logging.info("Tous les modèles ont été téléchargés avec succès")
-        
+            download_tts_model()
+
+        logging.info("🎉 Tous les modèles nécessaires ont été installés avec succès.")
+
     except Exception as e:
-        logging.error(f"Erreur lors du téléchargement des modèles: {str(e)}")
+        logging.error(f"❌ Erreur lors de l'installation des modèles : {e}")
         raise
 
 if __name__ == "__main__":
-    download_models()
-    
+    main()

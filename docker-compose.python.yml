@@ -1,64 +1,54 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # Service Ollama
+  # Service de modèles LLM (Mistral) via Ollama
   ollama:
     image: ollama/ollama:latest
+    container_name: ollama
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_ORIGINS=*
     command: serve
+    restart: unless-stopped
 
-  # Service principal (Python 3.12)
+  # Backend principal (Transcription + Résumé) - Python 3.12
   main_api:
     build:
       context: ./backend_python
-      dockerfile: Dockerfile.main
+      dockerfile: Dockerfile.main  # Python 3.12
+    container_name: main_api
     ports:
       - "8000:8000"
     volumes:
       - ./backend_python:/app
       - ./models:/app/models
     environment:
-      - PYTHONPATH=/app
-      - TTS_MODEL_PATH=/app/models/tts
-      - WHISPER_MODEL_PATH=/app/models/whisper
-      - SPACY_MODEL_PATH=/app/models/spacy
-      - MAIN_API_PORT=8000
-      - OLLAMA_HOST=ollama
-      - OLLAMA_PORT=11434
+      - PYTHONUNBUFFERED=1
+      - MODEL_DIR=/app/models
+      - IS_MAIN_SERVICE=1
+    command: ./init_main.sh
     depends_on:
       - ollama
-    command: bash -c "chmod +x /app/init_main.sh && bash /app/init_main.sh"
-    networks:
-      - app_network
+    restart: unless-stopped
 
-  # Service TTS (Python 3.10)
+  # Service TTS (Synthèse vocale) - Python 3.10
   tts_service:
     build:
       context: ./backend_python
-      dockerfile: Dockerfile.tts
+      dockerfile: Dockerfile.tts  # Python 3.10
+    container_name: tts_service
     ports:
       - "8001:8001"
     volumes:
       - ./backend_python:/app
       - ./models:/app/models
     environment:
-      - PYTHONPATH=/app
-      - TTS_MODEL_PATH=/app/models/tts
-      - TTS_API_PORT=8001
-    command: bash -c "chmod +x /app/init_tts.sh && bash /app/init_tts.sh"
-    networks:
-      - app_network
-
-networks:
-  app_network:
-    driver: bridge
+      - PYTHONUNBUFFERED=1
+      - MODEL_DIR=/app/models
+      - IS_TTS_SERVICE=1
+    command: ./init_tts.sh
+    restart: unless-stopped
 
 volumes:
   ollama_data:
-    driver: local 
