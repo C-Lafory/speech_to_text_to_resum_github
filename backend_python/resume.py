@@ -4,7 +4,7 @@ import logging
 import spacy
 import ollama
 import gc
-from download_models import SPACY_MODEL
+from config import SPACY_MODEL_NAME, SPACY_MODEL_DIR
 
 # Configuration des chemins
 BASE_DIR = "static/file"
@@ -17,44 +17,42 @@ TARGET_CHUNK_SIZE = 1024
 # Logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Initialiser Spacy avec le modèle préchargé
+# Chargement du modèle spaCy depuis le dossier local
+SPACY_MODEL_PATH = SPACY_MODEL_DIR / SPACY_MODEL_NAME
 try:
-    nlp = spacy.load(SPACY_MODEL)
-except OSError:
-    logging.error(f"❌ Modèle Spacy ({SPACY_MODEL}) non trouvé. Exécutez d'abord download_models.py")
+    nlp = spacy.load(str(SPACY_MODEL_PATH))
+except Exception as e:
+    logging.error(f"❌ Impossible de charger le modèle Spacy local depuis {SPACY_MODEL_PATH} : {e}")
     sys.exit(1)
 
 def count_tokens(text: str) -> int:
     return len(nlp(text))
 
 def calculate_optimal_chunk_size(text: str) -> int:
-    """Calcule la taille optimale des chunks en fonction de la longueur du texte"""
     total_tokens = count_tokens(text)
     if total_tokens < MIN_CHUNK_SIZE:
         return total_tokens
-    elif total_tokens > MAX_CHUNK_SIZE * 10:  # Pour les très longs textes
+    elif total_tokens > MAX_CHUNK_SIZE * 10:
         return MAX_CHUNK_SIZE
     else:
         return min(max(MIN_CHUNK_SIZE, total_tokens // 10), MAX_CHUNK_SIZE)
 
 def split_text(text: str) -> list[str]:
-    """Divise le texte en chunks de taille optimale"""
     chunk_size = calculate_optimal_chunk_size(text)
     sections = []
     start = 0
-    
+
     while start < len(text):
         end = min(start + chunk_size, len(text))
-        # Chercher le dernier point ou la dernière virgule dans la fenêtre
         last_dot = text.rfind('.', start, end)
         last_comma = text.rfind(',', start, end)
         last_break = max(last_dot, last_comma)
-        
+
         if last_break != -1:
             end = last_break + 1
         sections.append(text[start:end].strip())
         start = end
-    
+
     return sections
 
 def summarize_chunk(chunk: str) -> str:
@@ -95,7 +93,6 @@ def summarize_file(input_path: str, output_path: str):
             logging.info(f"📝 Résumé du chunk {idx + 1}/{len(chunks)}")
             summary = summarize_chunk(chunk)
             summaries.append(summary)
-            # Nettoyage de la mémoire après chaque chunk
             gc.collect()
         except Exception as e:
             logging.error(f"❌ Échec du résumé du chunk {idx + 1} : {e}")

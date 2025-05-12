@@ -2,7 +2,8 @@ import os
 import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from text_to_speech import generate_tts_audio
+from text_to_speech import generate_audio
+
 
 # Configuration des logs
 logging.basicConfig(
@@ -26,7 +27,7 @@ async def text_to_speech(request: TextToSpeechRequest):
         output_path = os.path.join(output_dir, f"tts_output_{hash(request.text)}.wav")
         
         # Générer l'audio
-        audio_path = generate_tts_audio(request.text, output_path)
+        audio_path = generate_audio(request.text, output_path)
         
         return {"audio_path": audio_path}
         

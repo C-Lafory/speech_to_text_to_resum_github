@@ -82,7 +82,9 @@ def generate_audio(input_path: str, output_path: str):
         logging.info(f"📝 Texte divisé en {len(text_chunks)} morceaux")
 
         # Chargement du modèle
-        tts = TTS(model_name=TTS_MODEL_NAME).to("cpu")
+        from config import TTS_MODEL_DIR
+        tts = TTS(model_path=TTS_MODEL_DIR).to("cpu")
+
 
         # Sélection dynamique d'un locuteur et langue
         speaker = tts.speakers[0] if tts.speakers else None

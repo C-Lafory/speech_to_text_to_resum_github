@@ -1,13 +1,12 @@
 import os
+import sys
 import logging
 import whisper
-import spacy
 import ffmpeg
 import gc
-import sys
 from typing import Dict, Any, Optional
 from pydantic import BaseModel
-from download_models import MODELS_DIR, WHISPER_MODEL_SIZE
+from config import WHISPER_MODEL_SIZE, WHISPER_MODEL_DIR
 
 # Configuration
 AUDIO_UPLOAD_DIR = "static/upload/audio"
@@ -53,17 +52,18 @@ def transcribe_audio(audio_id: str, audio_ext: str) -> str:
         if not os.path.isfile(input_audio_path):
             raise FileNotFoundError(f"❌ Fichier introuvable : {input_audio_path}")
 
+        # Vérification que le modèle Whisper est bien présent localement
+        if not WHISPER_MODEL_DIR.exists():
+            raise FileNotFoundError(f"❌ Dossier du modèle Whisper introuvable à {WHISPER_MODEL_DIR}. Exécutez d'abord download_models.py")
+
         # Étape 1 : conversion en WAV
         convert_to_wav(input_audio_path, wav_output_path)
 
-        # Étape 2 : transcription
-        logging.info(f"🧠 Chargement du modèle Whisper ({WHISPER_MODEL_SIZE})...")
-        model_path = os.path.join(MODELS_DIR, WHISPER_MODEL_SIZE + ".pt")
-        if not os.path.isfile(model_path):
-            raise FileNotFoundError(f"❌ Modèle Whisper non trouvé à {model_path}. Exécutez d'abord download_models.py")
+        # Étape 2 : chargement du modèle local
+        logging.info(f"🧠 Chargement de Whisper ({WHISPER_MODEL_SIZE}) depuis {WHISPER_MODEL_DIR}...")
+        model = whisper.load_model(WHISPER_MODEL_SIZE, download_root=str(WHISPER_MODEL_DIR))
 
-        model = whisper.load_model(WHISPER_MODEL_SIZE, download_root=MODELS_DIR)
-        
+        # Étape 3 : transcription
         logging.info(f"✍️ Transcription en cours de {wav_output_path}...")
         result = model.transcribe(wav_output_path, language="fr")
 
@@ -74,7 +74,7 @@ def transcribe_audio(audio_id: str, audio_ext: str) -> str:
         return transcription_output_path
 
     finally:
-        # Nettoyage de la mémoire
+        # Nettoyage mémoire
         if model is not None:
             del model
             gc.collect()
