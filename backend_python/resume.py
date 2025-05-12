@@ -6,23 +6,20 @@ import ollama
 import gc
 from config import SPACY_MODEL_NAME, SPACY_MODEL_DIR
 
-# Configuration des chemins
 BASE_DIR = "static/file"
 RESUME_FILENAME = "resum.txt"
 TRANSCRIPTION_FILENAME = "transcription.txt"
 MIN_CHUNK_SIZE = 512
 MAX_CHUNK_SIZE = 2048
-TARGET_CHUNK_SIZE = 1024
 
-# Logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Chargement du modèle spaCy depuis le dossier local
+# Chargement local spaCy
 SPACY_MODEL_PATH = SPACY_MODEL_DIR / SPACY_MODEL_NAME
 try:
     nlp = spacy.load(str(SPACY_MODEL_PATH))
 except Exception as e:
-    logging.error(f"❌ Impossible de charger le modèle Spacy local depuis {SPACY_MODEL_PATH} : {e}")
+    logging.error(f"❌ Erreur chargement modèle spaCy : {e}")
     sys.exit(1)
 
 def count_tokens(text: str) -> int:
@@ -39,87 +36,60 @@ def calculate_optimal_chunk_size(text: str) -> int:
 
 def split_text(text: str) -> list[str]:
     chunk_size = calculate_optimal_chunk_size(text)
-    sections = []
-    start = 0
-
+    sections, start = [], 0
     while start < len(text):
         end = min(start + chunk_size, len(text))
-        last_dot = text.rfind('.', start, end)
-        last_comma = text.rfind(',', start, end)
-        last_break = max(last_dot, last_comma)
-
+        last_break = max(text.rfind('.', start, end), text.rfind(',', start, end))
         if last_break != -1:
             end = last_break + 1
         sections.append(text[start:end].strip())
         start = end
-
     return sections
 
 def summarize_chunk(chunk: str) -> str:
     try:
         response = ollama.chat(model="mistral:7b", messages=[
             {"role": "system", "content": "Tu es un expert en résumé de texte en français."},
-            {"role": "user", "content": (
-                "Fais un résumé détaillé de ce texte en incluant toutes les informations importantes, "
-                "y compris les noms propres, dates, chiffres et mots-clés. Le résumé doit faire environ 25% du texte original "
-                f"et il doit être en français : {chunk}"
-            )}
+            {"role": "user", "content": f"Fais un résumé en 25 % du texte suivant : {chunk}"}
         ])
         return response.get("message", {}).get("content", "")
     except Exception as e:
-        logging.error(f"❌ Erreur lors de l'utilisation d'Ollama : {e}")
-        raise RuntimeError("Erreur avec Ollama. Vérifiez que le modèle mistral:7b est bien installé via download_models.py")
+        logging.error(f"❌ Erreur Ollama : {e}")
+        raise RuntimeError("Vérifie que Mistral est bien installé dans Ollama")
 
 def summarize_file(input_path: str, output_path: str):
-    logging.info(f"📄 Lecture de {input_path}")
     with open(input_path, "r", encoding="utf-8") as f:
         text = f.read()
-
-    token_count = count_tokens(text)
-    logging.info(f"📊 {token_count} tokens détectés.")
-
-    if token_count < 500:
-        logging.info("🔹 Texte trop court, pas de résumé généré.")
+    if count_tokens(text) < 500:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(text)
         return
-
     chunks = split_text(text)
-    logging.info(f"🧩 {len(chunks)} morceaux à résumer")
-
     summaries = []
-    for idx, chunk in enumerate(chunks):
+    for i, chunk in enumerate(chunks):
         try:
-            logging.info(f"📝 Résumé du chunk {idx + 1}/{len(chunks)}")
-            summary = summarize_chunk(chunk)
-            summaries.append(summary)
+            logging.info(f"📝 Résumé chunk {i+1}/{len(chunks)}")
+            summaries.append(summarize_chunk(chunk))
             gc.collect()
         except Exception as e:
-            logging.error(f"❌ Échec du résumé du chunk {idx + 1} : {e}")
-
-    final_summary = "\n".join(summaries)
+            logging.error(f"⚠️ Chunk {i+1} échoué : {e}")
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(final_summary)
-    logging.info(f"✅ Résumé généré dans {output_path}")
+        f.write("\n".join(summaries))
 
 def main():
     if len(sys.argv) != 2:
-        logging.error("❌ Usage : python summarizer.py <user_id>")
+        logging.error("Usage : python resume.py <user_id>")
         sys.exit(1)
-
     user_id = sys.argv[1]
-    user_dir = os.path.join(BASE_DIR, user_id)
-    input_file = os.path.join(user_dir, TRANSCRIPTION_FILENAME)
-    output_file = os.path.join(user_dir, RESUME_FILENAME)
-
+    input_file = os.path.join(BASE_DIR, user_id, TRANSCRIPTION_FILENAME)
+    output_file = os.path.join(BASE_DIR, user_id, RESUME_FILENAME)
     if not os.path.isfile(input_file):
-        logging.error(f"❌ Fichier de transcription introuvable : {input_file}")
+        logging.error(f"Fichier introuvable : {input_file}")
         sys.exit(2)
-
     try:
         summarize_file(input_file, output_file)
     except Exception as e:
-        logging.error(f"🚨 Erreur lors du résumé : {e}")
+        logging.error(f"Erreur lors du résumé : {e}")
         sys.exit(3)
 
 if __name__ == "__main__":

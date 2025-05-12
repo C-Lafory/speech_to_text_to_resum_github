@@ -1,19 +1,16 @@
 import logging
 import shutil
-import requests
-import whisper
-import spacy
-from TTS.api import TTS
+import os
 from pathlib import Path
 from config import (
     IS_MAIN_SERVICE,
     IS_TTS_SERVICE,
     WHISPER_MODEL_SIZE,
     SPACY_MODEL_NAME,
-    TTS_MODEL_NAME,
-    TTS_MODEL_DIR,
     WHISPER_MODEL_DIR,
     SPACY_MODEL_DIR,
+    TTS_MODEL_NAME,
+    TTS_MODEL_DIR,
     OLLAMA_MODEL
 )
 
@@ -33,6 +30,11 @@ def check_disk_space():
         raise RuntimeError(f"Espace disque insuffisant : {free_gb} GB disponibles.")
 
 def download_main_models():
+    import whisper
+    import spacy
+    import requests
+    from spacy.cli import download as spacy_download
+
     # Whisper
     logging.info("📥 Téléchargement du modèle Whisper dans %s...", WHISPER_MODEL_DIR)
     WHISPER_MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -40,46 +42,39 @@ def download_main_models():
     logging.info("✅ Modèle Whisper téléchargé localement.")
 
     # spaCy
-    logging.info("📥 Téléchargement du modèle Spacy dans %s...", SPACY_MODEL_DIR)
+    logging.info("📥 Vérification du modèle spaCy dans %s...", SPACY_MODEL_DIR)
     SPACY_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-
     try:
         spacy.load(str(SPACY_MODEL_DIR / SPACY_MODEL_NAME))
-        logging.info("✅ Modèle Spacy déjà présent localement.")
+        logging.info("✅ Modèle spaCy déjà présent localement.")
     except:
-        from spacy.cli import download
-        download(SPACY_MODEL_NAME)
-        logging.info("✅ Modèle Spacy téléchargé via spacy.cli.")
+        spacy_download(SPACY_MODEL_NAME)
+        logging.info("✅ Modèle spaCy téléchargé.")
 
-    # Ollama Mistral
+    # Ollama
     try:
         tags = requests.get(f"{OLLAMA_API_URL}/tags").json()
         if not any(model["name"] == OLLAMA_MODEL for model in tags.get("models", [])):
-            logging.info("📥 Téléchargement du modèle Ollama : %s", OLLAMA_MODEL)
+            logging.info(f"📥 Téléchargement du modèle Ollama {OLLAMA_MODEL}...")
             requests.post(f"{OLLAMA_API_URL}/pull", json={"name": OLLAMA_MODEL})
             logging.info("✅ Modèle Ollama téléchargé.")
         else:
-            logging.info("✅ Modèle Ollama déjà présent.")
+            logging.info("✅ Modèle Ollama déjà installé.")
     except Exception as e:
-        logging.warning(f"⚠️ Impossible de vérifier Ollama : {e}")
+        logging.warning(f"⚠️ Vérification Ollama impossible : {e}")
 
 def download_tts_models():
+    from TTS.api import TTS
     logging.info("📥 Téléchargement du modèle TTS dans %s...", TTS_MODEL_DIR)
     TTS_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    try:
-        TTS(model_name=TTS_MODEL_NAME, progress_bar=False).to("cpu")
-        logging.info("✅ Modèle TTS téléchargé localement.")
-    except Exception as e:
-        logging.error(f"❌ Erreur de téléchargement du modèle TTS : {e}")
-        raise
+    TTS(model_name=TTS_MODEL_NAME).to("cpu")
+    logging.info("✅ Modèle TTS téléchargé localement.")
 
 def main():
     check_disk_space()
-
     if IS_MAIN_SERVICE:
         logging.info("🔧 Service principal détecté (main_api)")
         download_main_models()
-
     if IS_TTS_SERVICE:
         logging.info("🔧 Service TTS détecté (tts_service)")
         download_tts_models()
