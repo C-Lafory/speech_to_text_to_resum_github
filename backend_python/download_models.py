@@ -33,74 +33,56 @@ def check_disk_space():
         raise RuntimeError(f"Espace disque insuffisant : {free_gb} GB disponibles.")
 
 def download_main_models():
+    # Whisper
     logging.info("📥 Téléchargement du modèle Whisper dans %s...", WHISPER_MODEL_DIR)
     WHISPER_MODEL_DIR.mkdir(parents=True, exist_ok=True)
     whisper.load_model(WHISPER_MODEL_SIZE, download_root=str(WHISPER_MODEL_DIR))
     logging.info("✅ Modèle Whisper téléchargé localement.")
 
+    # spaCy
     logging.info("📥 Téléchargement du modèle Spacy dans %s...", SPACY_MODEL_DIR)
     SPACY_MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
-        spacy.load(str(SPACY_MODEL_DIR))
-        logging.info("✅ Modèle Spacy déjà disponible.")
+        spacy.load(str(SPACY_MODEL_DIR / SPACY_MODEL_NAME))
+        logging.info("✅ Modèle Spacy déjà présent localement.")
     except:
         from spacy.cli import download
         download(SPACY_MODEL_NAME)
-        # Déplacement manuel du modèle téléchargé
-        import shutil as sh
-        import importlib.util
-        spec = importlib.util.find_spec(SPACY_MODEL_NAME)
-        if spec and spec.submodule_search_locations:
-            model_path = Path(spec.submodule_search_locations[0])
-            if model_path.exists():
-                sh.copytree(model_path, SPACY_MODEL_DIR, dirs_exist_ok=True)
-                logging.info("✅ Modèle Spacy copié localement dans %s.", SPACY_MODEL_DIR)
-            else:
-                raise RuntimeError("Impossible de localiser le modèle Spacy téléchargé.")
+        logging.info("✅ Modèle Spacy téléchargé via spacy.cli.")
+
+    # Ollama Mistral
+    try:
+        tags = requests.get(f"{OLLAMA_API_URL}/tags").json()
+        if not any(model["name"] == OLLAMA_MODEL for model in tags.get("models", [])):
+            logging.info("📥 Téléchargement du modèle Ollama : %s", OLLAMA_MODEL)
+            requests.post(f"{OLLAMA_API_URL}/pull", json={"name": OLLAMA_MODEL})
+            logging.info("✅ Modèle Ollama téléchargé.")
         else:
-            raise RuntimeError("Erreur lors de la détection du modèle Spacy.")
+            logging.info("✅ Modèle Ollama déjà présent.")
+    except Exception as e:
+        logging.warning(f"⚠️ Impossible de vérifier Ollama : {e}")
 
-def ollama_ready():
+def download_tts_models():
+    logging.info("📥 Téléchargement du modèle TTS dans %s...", TTS_MODEL_DIR)
+    TTS_MODEL_DIR.mkdir(parents=True, exist_ok=True)
     try:
-        return requests.get(f"{OLLAMA_API_URL}/version").status_code == 200
-    except Exception:
-        return False
-
-def mistral_available():
-    try:
-        response = requests.get(f"{OLLAMA_API_URL}/tags")
-        if response.status_code == 200:
-            models = response.json().get("models", [])
-            return any(m["name"] == OLLAMA_MODEL for m in models)
-    except Exception:
-        return False
-
-def download_tts_model():
-    logging.info("📥 Téléchargement du modèle TTS...")
-    tts = TTS(model_name=TTS_MODEL_NAME)
-    tts.save_model(output_path=TTS_MODEL_DIR)
-    logging.info(f"✅ Modèle TTS sauvegardé localement dans {TTS_MODEL_DIR}")
+        TTS(model_name=TTS_MODEL_NAME, progress_bar=False).to("cpu")
+        logging.info("✅ Modèle TTS téléchargé localement.")
+    except Exception as e:
+        logging.error(f"❌ Erreur de téléchargement du modèle TTS : {e}")
+        raise
 
 def main():
-    try:
-        check_disk_space()
+    check_disk_space()
 
-        if IS_MAIN_SERVICE:
-            if not ollama_ready():
-                raise RuntimeError("❌ Ollama n'est pas disponible.")
-            if not mistral_available():
-                raise RuntimeError(f"❌ Le modèle '{OLLAMA_MODEL}' n'est pas encore chargé dans Ollama.")
-            download_main_models()
+    if IS_MAIN_SERVICE:
+        logging.info("🔧 Service principal détecté (main_api)")
+        download_main_models()
 
-        if IS_TTS_SERVICE:
-            download_tts_model()
-
-        logging.info("🎉 Tous les modèles ont été installés localement avec succès.")
-
-    except Exception as e:
-        logging.error(f"❌ Erreur : {e}")
-        raise
+    if IS_TTS_SERVICE:
+        logging.info("🔧 Service TTS détecté (tts_service)")
+        download_tts_models()
 
 if __name__ == "__main__":
     main()
