@@ -3,16 +3,16 @@ package pythonclient
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 )
 
-const (
-	baseURL = "http://backend_python:8000"
-	apiKey  = "sk-internal-backend-python-1234" // Doit correspondre à ton .env Python
-)
+const baseURL = "http://main_api:8000"
+const ttsURL = "http://tts_service:8001"
+var apiKey = os.Getenv("INTERNAL_API_KEY")
 
 func Transcribe(filePath string) (string, error) {
 	file, err := os.Open(filePath)
@@ -23,19 +23,32 @@ func Transcribe(filePath string) (string, error) {
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile("audio_file", "audio.wav")
-	io.Copy(part, file)
+	part, err := writer.CreateFormFile("audio_file", filePath)
+	if err != nil {
+		return "", err
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return "", err
+	}
 	writer.Close()
 
-	req, _ := http.NewRequest("POST", baseURL+"/transcribe", body)
-	req.Header.Set("x-api-key", apiKey)
+	req, err := http.NewRequest("POST", baseURL+"/transcribe", body)
+	if err != nil {
+		return "", err
+	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("x-api-key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("transcription failed: %s", b)
+	}
 
 	var result struct {
 		Transcription string `json:"transcription"`
@@ -50,15 +63,23 @@ func Summarize(text string) (string, error) {
 	payload := map[string]string{"text": text}
 	jsonData, _ := json.Marshal(payload)
 
-	req, _ := http.NewRequest("POST", baseURL+"/summarize", bytes.NewBuffer(jsonData))
-	req.Header.Set("x-api-key", apiKey)
+	req, err := http.NewRequest("POST", baseURL+"/summarize", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("summarization failed: %s", b)
+	}
 
 	var result struct {
 		Summary string `json:"summary"`
@@ -73,9 +94,12 @@ func Speak(text string, outputPath string) error {
 	payload := map[string]string{"text": text}
 	jsonData, _ := json.Marshal(payload)
 
-	req, _ := http.NewRequest("POST", "http://tts_service:8001/speak", bytes.NewBuffer(jsonData))
-	req.Header.Set("x-api-key", apiKey)
+	req, err := http.NewRequest("POST", ttsURL+"/speak", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -83,11 +107,17 @@ func Speak(text string, outputPath string) error {
 	}
 	defer resp.Body.Close()
 
-	out, err := os.Create(outputPath)
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("TTS failed: %s", b)
+	}
+
+	outFile, err := os.Create(outputPath)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-	_, err = io.Copy(out, resp.Body)
+	defer outFile.Close()
+
+	_, err = io.Copy(outFile, resp.Body)
 	return err
 }
