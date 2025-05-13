@@ -4,16 +4,15 @@ import logging
 import whisper
 import ffmpeg
 import gc
-from typing import Dict, Any, Optional
-from pydantic import BaseModel
+from typing import Optional
 from config import WHISPER_MODEL_SIZE, WHISPER_MODEL_DIR
 
-# Configuration
+# Configuration des chemins
 AUDIO_UPLOAD_DIR = "static/upload/audio"
 OUTPUT_BASE_DIR = "static/file"
 SUPPORTED_FORMATS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac']
 
-# Logging
+# Configuration des logs
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
@@ -29,8 +28,8 @@ def convert_to_wav(input_path: str, output_path: str):
     try:
         if not check_audio_format(input_path):
             raise ValueError(f"Format audio non supporté. Formats acceptés : {', '.join(SUPPORTED_FORMATS)}")
-            
-        logging.info(f"🎧 Conversion en cours : {input_path} → {output_path}")
+
+        logging.info(f"🎧 Conversion : {input_path} → {output_path}")
         ffmpeg.input(input_path).output(output_path, ar=16000, ac=1).run(overwrite_output=True)
         logging.info("✅ Conversion réussie.")
     except Exception as e:
@@ -38,8 +37,8 @@ def convert_to_wav(input_path: str, output_path: str):
         raise
 
 def transcribe_audio(audio_id: str, audio_ext: str) -> str:
-    """Transcrire un fichier audio avec Whisper et sauvegarder le texte."""
-    model = None
+    """Transcrit un fichier audio avec Whisper (local) et sauvegarde le texte."""
+    model: Optional[whisper.Whisper] = None
     try:
         # Chemins dynamiques
         input_audio_path = os.path.join(AUDIO_UPLOAD_DIR, f"{audio_id}.{audio_ext}")
@@ -48,36 +47,35 @@ def transcribe_audio(audio_id: str, audio_ext: str) -> str:
         wav_output_path = os.path.join(output_dir, f"{audio_id}.wav")
         transcription_output_path = os.path.join(output_dir, "transcription.txt")
 
-        # Vérification du fichier source
         if not os.path.isfile(input_audio_path):
             raise FileNotFoundError(f"❌ Fichier introuvable : {input_audio_path}")
 
-        # Vérification que le modèle Whisper est bien présent localement
-        if not WHISPER_MODEL_DIR.exists():
-            raise FileNotFoundError(f"❌ Dossier du modèle Whisper introuvable à {WHISPER_MODEL_DIR}. Exécutez d'abord download_models.py")
+        # Vérification du fichier du modèle Whisper
+        model_file = WHISPER_MODEL_DIR / f"{WHISPER_MODEL_SIZE}.pt"
+        if not model_file.exists():
+            raise FileNotFoundError(f"❌ Modèle Whisper manquant : {model_file}. Exécutez download_models.py.")
 
-        # Étape 1 : conversion en WAV
+        # Conversion en WAV
         convert_to_wav(input_audio_path, wav_output_path)
 
-        # Étape 2 : chargement du modèle local
+        # Chargement du modèle Whisper local
         logging.info(f"🧠 Chargement de Whisper ({WHISPER_MODEL_SIZE}) depuis {WHISPER_MODEL_DIR}...")
         model = whisper.load_model(WHISPER_MODEL_SIZE, download_root=str(WHISPER_MODEL_DIR))
 
-        # Étape 3 : transcription
-        logging.info(f"✍️ Transcription en cours de {wav_output_path}...")
+        # Transcription
+        logging.info(f"✍️ Transcription du fichier : {wav_output_path}")
         result = model.transcribe(wav_output_path, language="fr")
 
         with open(transcription_output_path, "w", encoding="utf-8") as f:
             f.write(result["text"])
 
-        logging.info(f"✅ Transcription enregistrée : {transcription_output_path}")
+        logging.info(f"✅ Transcription enregistrée dans : {transcription_output_path}")
         return transcription_output_path
 
     finally:
-        # Nettoyage mémoire
-        if model is not None:
+        if model:
             del model
-            gc.collect()
+        gc.collect()
 
 def main():
     if len(sys.argv) != 3:
@@ -88,7 +86,7 @@ def main():
 
     try:
         path = transcribe_audio(audio_id, audio_ext)
-        logging.info(f"✅ Terminé. Résultat dans : {path}")
+        logging.info(f"✅ Transcription terminée. Résultat : {path}")
         sys.exit(0)
     except FileNotFoundError as e:
         logging.error(str(e))
@@ -97,7 +95,7 @@ def main():
         logging.error(str(e))
         sys.exit(3)
     except Exception as e:
-        logging.error(f"🚨 Une erreur inattendue est survenue : {e}")
+        logging.error(f"🚨 Erreur inattendue : {e}")
         sys.exit(4)
 
 if __name__ == "__main__":
