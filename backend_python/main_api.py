@@ -11,6 +11,7 @@ async def verify_api_key(x_api_key: str = Header(...)):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid API key")
 
+
 @app.post("/transcribe")
 async def transcribe(audio_file: UploadFile = File(...), api_key: str = Depends(verify_api_key)):
     path = f"/tmp/{audio_file.filename}"
@@ -19,7 +20,11 @@ async def transcribe(audio_file: UploadFile = File(...), api_key: str = Depends(
     text = transcribe_audio(path)
     return {"transcription": text}
 
+
 @app.post("/summarize")
 async def summarize(body: dict, api_key: str = Depends(verify_api_key)):
-    summary = summarize_text(body.get("text", ""))
+    text = body.get("text", "")
+    if not text:
+        raise HTTPException(status_code=400, detail="Texte manquant.")
+    summary = summarize_text(text)
     return {"summary": summary}

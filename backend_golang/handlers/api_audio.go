@@ -15,69 +15,67 @@ import (
 	"api/utils"
 
 	"github.com/google/uuid"
+	"api/pythonclient"
 )
 
 func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 🛡️ Vérification méthode POST
 		if r.Method != http.MethodPost {
 			utils.RespondWithMessage(w, http.StatusMethodNotAllowed, "Only POST allowed")
 			return
 		}
 		utils.SetJSONHeaders(w)
 
-		// 🔐 Récupérer l’ID utilisateur via le middleware
 		userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 		if !ok || userID == 0 {
 			utils.RespondWithMessage(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 
-		// 📥 Lecture du corps de requête
 		var audioinfo models.AudioInfos
 		if err := json.NewDecoder(r.Body).Decode(&audioinfo); err != nil {
 			utils.RespondWithMessage(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 
-		// 🔁 Générer un ID unique pour ce traitement (dossier)
 		audioUUID := uuid.NewString()
-
-		// 📁 Enregistrer le fichier audio dans un répertoire dédié
 		absPath, dbPath, err := models.SaveAudioFileWithUUID(userID, audioUUID, audioinfo)
 		if err != nil {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, fmt.Sprintf("Error saving audio: %v", err))
 			return
 		}
 
-		// 📄 Récupérer l’extension du fichier (ex: .wav)
 		audioExt := filepath.Ext(absPath)
-
-		// 🧠 Créer le nom de base : ./static/file/user_<id>/<uuid>/
 		fileBase := fmt.Sprintf("./static/file/user_%d/%s", userID, audioUUID)
+		transPath := filepath.Join(fileBase, "transcription.txt")
+		summaryPath := filepath.Join(fileBase, "resum.txt")
+		audioOutPath := filepath.Join(fileBase, "audio_resume.mp3")
 
-		// 🧠 Transcription
-		if !utils.Transcription(audioUUID + "." + strings.TrimPrefix(audioExt, ".")) {
+		// 🧠 Nouveau traitement via FastAPI
+		// 1. Transcription
+		transcription, err := pythonclient.Transcribe(absPath)
+		if err != nil {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, "Transcription failed")
 			return
 		}
-		transPath := filepath.Join(fileBase, "transcription.txt")
+		os.WriteFile(transPath, []byte(transcription), 0644)
 
-		// 📝 Résumé
-		if !utils.Resume(audioUUID) {
+		// 2. Résumé
+		summary, err := pythonclient.Summarize(transcription)
+		if err != nil {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, "Résumé failed")
 			return
 		}
-		summaryPath := filepath.Join(fileBase, "resum.txt")
+		os.WriteFile(summaryPath, []byte(summary), 0644)
 
-		// 🔊 Génération du résumé audio
-		if !utils.GenerateResumeAudio(audioUUID) {
+		// 3. TTS
+		err = pythonclient.Speak(summary, audioOutPath)
+		if err != nil {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, "Audio résumé generation failed")
 			return
 		}
-		audioOutPath := filepath.Join(fileBase, "audio_resume.mp3")
 
-		// 💾 Enregistrement dans la base
+		// 💾 Enregistrement DB
 		file := models.File{
 			UserID:            userID,
 			AudioInputPath:    dbPath,
@@ -86,13 +84,12 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 			AudioOutputPath:   strings.TrimPrefix(audioOutPath, "./static"),
 			CreatedAt:         time.Now(),
 		}
-
 		if err := database.InsertFileRecord(db, &file); err != nil {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, "Error saving file in DB")
 			return
 		}
 
-		// ✅ Réponse finale
+		// ✅ Réponse
 		utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 			"message":     "Audio processed successfully.",
 			"transcript":  file.TranscriptionPath,

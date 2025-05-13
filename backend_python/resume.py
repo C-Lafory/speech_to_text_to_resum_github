@@ -1,27 +1,22 @@
-import os
-import sys
 import logging
 import spacy
 import ollama
 import gc
 from config import SPACY_MODEL_NAME
 
-# Chemins et fichiers
-BASE_DIR = "static/file"
-RESUME_FILENAME = "resum.txt"
-TRANSCRIPTION_FILENAME = "transcription.txt"
-MIN_CHUNK_SIZE = 512
-MAX_CHUNK_SIZE = 2048
-
-# Configuration des logs
+# Configuration logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Chargement du modèle spaCy depuis le cache local (pas de chemin personnalisé ici)
+# Chargement du modèle spaCy
 try:
     nlp = spacy.load(SPACY_MODEL_NAME)
 except Exception as e:
     logging.error(f"❌ Erreur chargement modèle spaCy ({SPACY_MODEL_NAME}) : {e}")
-    sys.exit(1)
+    raise RuntimeError("Erreur de chargement spaCy")
+
+# Constantes
+MIN_CHUNK_SIZE = 512
+MAX_CHUNK_SIZE = 2048
 
 def count_tokens(text: str) -> int:
     return len(nlp(text))
@@ -56,16 +51,12 @@ def summarize_chunk(chunk: str) -> str:
         return response.get("message", {}).get("content", "")
     except Exception as e:
         logging.error(f"❌ Erreur Ollama : {e}")
-        raise RuntimeError("Vérifie que Mistral est bien installé dans Ollama")
+        raise RuntimeError("Vérifie que Mistral est bien installé et lancé via Ollama")
 
-def summarize_file(input_path: str, output_path: str):
-    with open(input_path, "r", encoding="utf-8") as f:
-        text = f.read()
-
+def summarize_text(text: str) -> str:
+    """Fonction à importer dans FastAPI : prend un texte brut, retourne le résumé complet"""
     if count_tokens(text) < 500:
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(text)
-        return
+        return text
 
     chunks = split_text(text)
     summaries = []
@@ -76,28 +67,4 @@ def summarize_file(input_path: str, output_path: str):
             gc.collect()
         except Exception as e:
             logging.error(f"⚠️ Chunk {i+1} échoué : {e}")
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(summaries))
-
-def main():
-    if len(sys.argv) != 2:
-        logging.error("Usage : python resume.py <user_id>")
-        sys.exit(1)
-
-    user_id = sys.argv[1]
-    input_file = os.path.join(BASE_DIR, user_id, TRANSCRIPTION_FILENAME)
-    output_file = os.path.join(BASE_DIR, user_id, RESUME_FILENAME)
-
-    if not os.path.isfile(input_file):
-        logging.error(f"Fichier introuvable : {input_file}")
-        sys.exit(2)
-
-    try:
-        summarize_file(input_file, output_file)
-    except Exception as e:
-        logging.error(f"Erreur lors du résumé : {e}")
-        sys.exit(3)
-
-if __name__ == "__main__":
-    main()
+    return "\n".join(summaries)
