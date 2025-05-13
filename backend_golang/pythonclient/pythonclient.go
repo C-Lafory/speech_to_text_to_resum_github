@@ -3,15 +3,16 @@ package pythonclient
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 )
 
-const baseURL = "http://backend_python:8000"
-const apiKey = "sk-internal-backend-python-1234" // Doit correspondre à ton .env Python
+const (
+	baseURL = "http://backend_python:8000"
+	apiKey  = "sk-internal-backend-python-1234" // Doit correspondre à ton .env Python
+)
 
 func Transcribe(filePath string) (string, error) {
 	file, err := os.Open(filePath)

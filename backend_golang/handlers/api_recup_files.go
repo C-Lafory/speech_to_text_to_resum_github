@@ -6,7 +6,6 @@ import (
 
 	database "api/database/queries"
 	"api/middleware"
-	"api/pkg/models"
 	"api/utils"
 )
 

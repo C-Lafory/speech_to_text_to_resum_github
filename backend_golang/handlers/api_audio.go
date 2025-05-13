@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -14,8 +15,9 @@ import (
 	"api/pkg/models"
 	"api/utils"
 
-	"github.com/google/uuid"
 	"api/pythonclient"
+
+	"github.com/google/uuid"
 )
 
 func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
@@ -45,7 +47,6 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		audioExt := filepath.Ext(absPath)
 		fileBase := fmt.Sprintf("./static/file/user_%d/%s", userID, audioUUID)
 		transPath := filepath.Join(fileBase, "transcription.txt")
 		summaryPath := filepath.Join(fileBase, "resum.txt")
@@ -58,7 +59,7 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, "Transcription failed")
 			return
 		}
-		os.WriteFile(transPath, []byte(transcription), 0644)
+		os.WriteFile(transPath, []byte(transcription), 0o644)
 
 		// 2. Résumé
 		summary, err := pythonclient.Summarize(transcription)
@@ -66,7 +67,7 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, "Résumé failed")
 			return
 		}
-		os.WriteFile(summaryPath, []byte(summary), 0644)
+		os.WriteFile(summaryPath, []byte(summary), 0o644)
 
 		// 3. TTS
 		err = pythonclient.Speak(summary, audioOutPath)
