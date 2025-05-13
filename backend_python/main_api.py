@@ -1,57 +1,28 @@
 import os
-import logging
-from fastapi import FastAPI, UploadFile, HTTPException, Depends, Header
-from fastapi.security import APIKeyHeader
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-import secrets
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import FileResponse
 from transcription import transcribe_audio
-from resume import generate_summary
-from download_models import MODEL_DIR
+from resume import summarize_file
 
 app = FastAPI()
 
-# Clé API pour l'authentification entre services
-API_KEY = os.getenv("INTERNAL_API_KEY", secrets.token_hex(32))
+AUDIO_UPLOAD_DIR = "static/upload/audio"
+TEXT_OUTPUT_PATH = "static/file/transcription.txt"
+SUMMARY_OUTPUT_PATH = "static/file/resum.txt"
 
-# Middleware d'authentification
-async def verify_api_key(x_api_key: str = Header(...)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid API key")
-    return x_api_key
+@app.post("/api/audio")
+async def process_audio(file: UploadFile = File(...)):
+    # Sauvegarde du fichier uploadé
+    audio_path = os.path.join(AUDIO_UPLOAD_DIR, file.filename)
+    with open(audio_path, "wb") as f:
+        f.write(await file.read())
 
-@app.post("/transcribe")
-async def transcribe(
-    audio_file: UploadFile,
-    api_key: str = Depends(verify_api_key)
-):
-    try:
-        # Vérification du type de fichier
-        if not audio_file.content_type.startswith('audio/'):
-            raise HTTPException(status_code=400, detail="File must be an audio file")
-        
-        # Vérification de la taille du fichier (max 100MB)
-        if audio_file.size > 100 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="File too large")
-        
-        # Traitement du fichier
-        result = transcribe_audio(audio_file)
-        return {"transcription": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Transcription
+    transcription = transcribe_audio(audio_path)
+    with open(TEXT_OUTPUT_PATH, "w") as f:
+        f.write(transcription)
 
-@app.post("/summarize")
-async def summarize(
-    text: str,
-    api_key: str = Depends(verify_api_key)
-):
-    try:
-        # Vérification de la longueur du texte
-        if len(text) > 100000:  # 100k caractères max
-            raise HTTPException(status_code=400, detail="Text too long")
-        
-        result = generate_summary(text)
-        return {"summary": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+    # Résumé à partir du fichier de transcription
+    summarize_file(TEXT_OUTPUT_PATH, SUMMARY_OUTPUT_PATH)
+
+    return FileResponse(SUMMARY_OUTPUT_PATH, media_type="text/plain")
