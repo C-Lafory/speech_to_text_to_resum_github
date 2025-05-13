@@ -4,7 +4,7 @@ import logging
 import spacy
 import ollama
 import gc
-from config import SPACY_MODEL_NAME, SPACY_MODEL_DIR
+from config import SPACY_MODEL_NAME
 
 BASE_DIR = "static/file"
 RESUME_FILENAME = "resum.txt"
@@ -14,28 +14,17 @@ MAX_CHUNK_SIZE = 2048
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Chargement local spaCy
-SPACY_MODEL_PATH = SPACY_MODEL_DIR / SPACY_MODEL_NAME
 try:
-    nlp = spacy.load(str(SPACY_MODEL_PATH))
+    nlp = spacy.load(SPACY_MODEL_NAME)
 except Exception as e:
-    logging.error(f"❌ Erreur chargement modèle spaCy : {e}")
+    logging.error(f"❌ spaCy non trouvé : {e}")
     sys.exit(1)
 
 def count_tokens(text: str) -> int:
     return len(nlp(text))
 
-def calculate_optimal_chunk_size(text: str) -> int:
-    total_tokens = count_tokens(text)
-    if total_tokens < MIN_CHUNK_SIZE:
-        return total_tokens
-    elif total_tokens > MAX_CHUNK_SIZE * 10:
-        return MAX_CHUNK_SIZE
-    else:
-        return min(max(MIN_CHUNK_SIZE, total_tokens // 10), MAX_CHUNK_SIZE)
-
 def split_text(text: str) -> list[str]:
-    chunk_size = calculate_optimal_chunk_size(text)
+    chunk_size = min(max(MIN_CHUNK_SIZE, len(text) // 10), MAX_CHUNK_SIZE)
     sections, start = [], 0
     while start < len(text):
         end = min(start + chunk_size, len(text))
@@ -54,8 +43,8 @@ def summarize_chunk(chunk: str) -> str:
         ])
         return response.get("message", {}).get("content", "")
     except Exception as e:
-        logging.error(f"❌ Erreur Ollama : {e}")
-        raise RuntimeError("Vérifie que Mistral est bien installé dans Ollama")
+        logging.error(f"Erreur Ollama : {e}")
+        return ""
 
 def summarize_file(input_path: str, output_path: str):
     with open(input_path, "r", encoding="utf-8") as f:
@@ -64,15 +53,7 @@ def summarize_file(input_path: str, output_path: str):
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(text)
         return
-    chunks = split_text(text)
-    summaries = []
-    for i, chunk in enumerate(chunks):
-        try:
-            logging.info(f"📝 Résumé chunk {i+1}/{len(chunks)}")
-            summaries.append(summarize_chunk(chunk))
-            gc.collect()
-        except Exception as e:
-            logging.error(f"⚠️ Chunk {i+1} échoué : {e}")
+    summaries = [summarize_chunk(chunk) for chunk in split_text(text)]
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(summaries))
 
@@ -86,11 +67,7 @@ def main():
     if not os.path.isfile(input_file):
         logging.error(f"Fichier introuvable : {input_file}")
         sys.exit(2)
-    try:
-        summarize_file(input_file, output_file)
-    except Exception as e:
-        logging.error(f"Erreur lors du résumé : {e}")
-        sys.exit(3)
+    summarize_file(input_file, output_file)
 
 if __name__ == "__main__":
     main()
