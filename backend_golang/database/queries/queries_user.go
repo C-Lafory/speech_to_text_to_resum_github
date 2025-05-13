@@ -130,3 +130,35 @@ func InsertFileRecord(db *sql.DB, file *models.File) error {
 	)
 	return err
 }
+
+func GetFilesByUserID(db *sql.DB, userID int) ([]models.File, error) {
+	rows, err := db.Query(`
+		SELECT id, user_id, audio_input_path, transcription_path, summary_path, audio_output_path, created_at
+		FROM files
+		WHERE user_id = ?
+		ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []models.File
+	for rows.Next() {
+		var file models.File
+		err := rows.Scan(
+			&file.ID,
+			&file.UserID,
+			&file.AudioInputPath,
+			&file.TranscriptionPath,
+			&file.SummaryPath,
+			&file.AudioOutputPath,
+			&file.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	return files, nil
+}
