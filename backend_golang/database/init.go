@@ -2,7 +2,9 @@ package database
 
 import (
     "database/sql"
+    "fmt"
     "log"
+    "os"
 
     _ "github.com/go-sql-driver/mysql"
 )
@@ -10,20 +12,25 @@ import (
 var DB *sql.DB
 
 func InitDB() {
-    // Chaîne de connexion pour une base de données locale
-    dsn := "test:test@tcp(localhost:3306)/mydatabase?charset=utf8mb4&parseTime=True&loc=Local"
+    // Lire les variables d'environnement
+    user := os.Getenv("DB_USER")
+    password := os.Getenv("DB_PASSWORD")
+    host := os.Getenv("DB_HOST")
+    port := os.Getenv("DB_PORT")
+    name := os.Getenv("DB_NAME")
 
-    // Initialiser la connexion
+    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+        user, password, host, port, name)
+
     var err error
     DB, err = sql.Open("mysql", dsn)
     if err != nil {
         log.Fatalf("Erreur de connexion à la base de données : %v", err)
     }
 
-    // Vérifier que la connexion fonctionne
     if err := DB.Ping(); err != nil {
         log.Fatalf("Erreur lors du ping de la base de données : %v", err)
     }
 
-    log.Println("Connexion à la base de données réussie.")
+    log.Println("✅ Connexion à la base de données réussie.")
 }
