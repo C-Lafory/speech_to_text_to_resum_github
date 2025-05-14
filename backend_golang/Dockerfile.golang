@@ -22,7 +22,7 @@ WORKDIR /app
 
 # Copie du binaire compilé
 COPY --from=builder /app/main .
-COPY --from=builder /app/static ./static
+# COPY --from=builder /app/static ./static
 
 # Port exposé (optionnel, à adapter si reverse proxy)
 EXPOSE 8080
