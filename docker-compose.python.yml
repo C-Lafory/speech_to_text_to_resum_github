@@ -16,7 +16,7 @@ services:
   main_api:
     build:
       context: ./backend_python
-      dockerfile: Dockerfile.main  # Python 3.12
+      dockerfile: Dockerfile.main
     container_name: main_api
     ports:
       - "8000:8000"
@@ -27,6 +27,8 @@ services:
       - PYTHONUNBUFFERED=1
       - MODEL_DIR=/app/models
       - IS_MAIN_SERVICE=1
+    env_file:
+      - ./backend_python/.env  # ✅ Ajouté ici
     command: ./init_main.sh
     depends_on:
       - ollama
@@ -36,7 +38,7 @@ services:
   tts_service:
     build:
       context: ./backend_python
-      dockerfile: Dockerfile.tts  # Python 3.10
+      dockerfile: Dockerfile.tts
     container_name: tts_service
     ports:
       - "8001:8001"
@@ -47,6 +49,8 @@ services:
       - PYTHONUNBUFFERED=1
       - MODEL_DIR=/app/models
       - IS_TTS_SERVICE=1
+    env_file:
+      - ./backend_python/.env  # ✅ Ajouté ici aussi
     command: ./init_tts.sh
     restart: unless-stopped
 
