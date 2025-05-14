@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  # 🐬 Service MySQL
+  # 🐬 Base de données MySQL
   mysql:
     image: mysql:8.0
     container_name: mysql
@@ -16,7 +16,7 @@ services:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
 
-  # 🔁 Migration automatique via golang-migrate
+  # 🔁 Migrations SQL automatiques
   migrate:
     image: migrate/migrate
     container_name: db_migrate
@@ -31,11 +31,11 @@ services:
     depends_on:
       - mysql
 
-  # 🟨 Backend Golang
+  # 🟨 Backend Go
   backend_golang:
     build:
       context: ./backend_golang
-      dockerfile: Dockerfile.golang
+      dockerfile: Dockerfile
     container_name: backend_golang
     ports:
       - "8080:8080"
@@ -49,7 +49,7 @@ services:
       - tts_service
     restart: unless-stopped
 
-  # 🔵 API Python principale
+  # 🔵 API principale Python (Transcription + Résumé)
   main_api:
     image: testcome-main_api
     container_name: main_api
@@ -57,9 +57,11 @@ services:
       - "8000:8000"
     env_file:
       - ./backend_python/.env
+    environment:
+      - IS_MAIN_SERVICE=1
     restart: unless-stopped
 
-  # 🔊 Service TTS Python
+  # 🔊 Service TTS (Synthèse vocale)
   tts_service:
     image: testcome-tts_service
     container_name: tts_service
@@ -67,6 +69,8 @@ services:
       - "8001:8001"
     env_file:
       - ./backend_python/.env
+    environment:
+      - IS_TTS_SERVICE=1
     restart: unless-stopped
 
 volumes:

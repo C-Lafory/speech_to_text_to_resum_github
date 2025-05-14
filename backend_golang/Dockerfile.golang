@@ -1,31 +1,17 @@
-# Étape 1 : build
+# Étape de compilation
 FROM golang:1.23-alpine AS builder
 
-
-# Dossier de travail dans le conteneur
 WORKDIR /app
-
-# Copie du code Go dans le conteneur
 COPY . .
 
-# Téléchargement des dépendances
 RUN go mod download
-
-# Compilation de l'application
 RUN go build -o main ./cmd/main.go
 
-# Étape 2 : image finale légère
+# Étape finale
 FROM alpine:latest
 
-# Dossier de travail pour l'exécution
 WORKDIR /app
+COPY --from=builder /app/main ./main
 
-# Copie du binaire compilé
-COPY --from=builder /app/main .
-# COPY --from=builder /app/static ./static
-
-# Port exposé (optionnel, à adapter si reverse proxy)
 EXPOSE 8080
-
-# Lancement du binaire
 CMD ["./main"]
