@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.responses import FileResponse
-from resum_audio import text_to_speech
+from text_to_speech import text_to_speech
 import os
 import secrets
 
