@@ -35,6 +35,7 @@ services:
   backend_golang:
     build:
       context: ./backend_golang
+      dockerfile: Dockerfile.golang
     container_name: backend_golang
     ports:
       - "8080:8080"
