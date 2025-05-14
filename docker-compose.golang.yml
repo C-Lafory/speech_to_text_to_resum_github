@@ -35,7 +35,7 @@ services:
   backend_golang:
     build:
       context: ./backend_golang
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.golang
     container_name: backend_golang
     ports:
       - "8080:8080"
@@ -49,29 +49,53 @@ services:
       - tts_service
     restart: unless-stopped
 
-  # 🔵 API principale Python (Transcription + Résumé)
+  # 🔵 FastAPI - Transcription + Résumé
   main_api:
     image: testcome-main_api
     container_name: main_api
     ports:
       - "8000:8000"
-    env_file:
-      - ./backend_python/.env
     environment:
+      - PYTHONUNBUFFERED=1
+      - MODEL_DIR=/app/models
       - IS_MAIN_SERVICE=1
+      - INTERNAL_API_KEY=sk-internal-backend-python-1234
+    volumes:
+      - ./backend_python:/app
+      - ./models:/app/models
+    command: ./init_main.sh
+    depends_on:
+      - ollama
     restart: unless-stopped
 
-  # 🔊 Service TTS (Synthèse vocale)
+  # 🔊 FastAPI - Synthèse vocale (TTS)
   tts_service:
     image: testcome-tts_service
     container_name: tts_service
     ports:
       - "8001:8001"
-    env_file:
-      - ./backend_python/.env
     environment:
+      - PYTHONUNBUFFERED=1
+      - MODEL_DIR=/app/models
       - IS_TTS_SERVICE=1
+      - INTERNAL_API_KEY=sk-internal-backend-python-1234
+    volumes:
+      - ./backend_python:/app
+      - ./models:/app/models
+    command: ./init_tts.sh
+    restart: unless-stopped
+
+  # 🧠 Ollama - Serveur Mistral LLM
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    command: serve
     restart: unless-stopped
 
 volumes:
   mysql_data:
+  ollama_data:
