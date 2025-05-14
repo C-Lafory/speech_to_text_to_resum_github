@@ -13,7 +13,7 @@ import (
 	"api/middleware"
 )
 
-const PORT = ":5050"
+const PORT = ":5048"
 
 func main() {
 	// Initialisation base de données
@@ -65,7 +65,6 @@ func setupRoutes() http.Handler {
 	// 📦 Endpoints API - Audio / Traitement
 	mux.Handle("/api/audio", middleware.AuthMiddleware(database.DB)(handlers.HandlerNewAudio(database.DB)))
 	mux.Handle("/api/files", middleware.AuthMiddleware(database.DB)(handlers.HandlerGetUserFiles(database.DB)))
-
 
 	// 🔐 Authentification
 	mux.Handle("/api/register", middleware.RateLimitIP(handlers.HandlerRegister(database.DB)))

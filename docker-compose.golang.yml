@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  backend_golang:
+    build:
+      context: ./backend_golang
+    container_name: backend_golang
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend_golang:/app
+    env_file:
+      - ./backend_golang/.env
+    depends_on:
+      - main_api
+      - tts_service
