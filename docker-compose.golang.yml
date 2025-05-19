@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # 🐬 Base de données MySQL
   mysql:
@@ -30,6 +28,7 @@ services:
       ]
     depends_on:
       - mysql
+    restart: "no"
 
   # 🟨 Backend Go
   backend_golang:
@@ -39,15 +38,22 @@ services:
     container_name: backend_golang
     ports:
       - "8080:8080"
-    volumes:
-      - ./backend_golang:/app
     env_file:
       - ./backend_golang/.env
+    environment:
+      - GIN_MODE=release
     depends_on:
       - mysql
+      - migrate
       - main_api
       - tts_service
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # 🔵 FastAPI - Transcription + Résumé
   main_api:
