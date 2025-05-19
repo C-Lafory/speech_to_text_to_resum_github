@@ -30,9 +30,14 @@ func main() {
 	}
 }
 
-
 func setupRoutes() http.Handler {
 	mux := http.NewServeMux()
+
+	// ✅ Endpoint healthcheck
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 
 	// 📁 Routes statiques (accès aux fichiers générés)
 	mux.Handle("/file/", http.StripPrefix("/file", http.FileServer(http.Dir("static/file"))))
