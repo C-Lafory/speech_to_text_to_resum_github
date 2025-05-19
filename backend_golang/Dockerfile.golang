@@ -35,6 +35,12 @@ RUN chmod +x /app/main
 # Vérification que le binaire existe et a les bonnes permissions
 RUN ls -la /app/main
 
+# Vérification du type de fichier
+RUN file /app/main
+
+# Vérification des dépendances
+RUN ldd /app/main || true
+
 # Exposer le port du serveur
 EXPOSE 8080
 
