@@ -25,5 +25,7 @@ FROM alpine:latest
 # Exposer le port du serveur
 EXPOSE 8080
 
+CMD ["ls", "-l"]
+
 # Démarrer l'application Go
 CMD ["./main"]
