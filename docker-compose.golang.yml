@@ -1,4 +1,7 @@
+version: "3.8"
+
 services:
+  # 🐬 MySQL Database
   mysql:
     image: mysql:8.0
     container_name: mysql
@@ -13,21 +16,25 @@ services:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
 
+  # 🔁 Migration Service (attend que MySQL soit prêt)
   db_migrate:
     image: migrate/migrate
     container_name: db_migrate
     volumes:
       - ./backend_golang/migrations:/migrations
+      - ./backend_golang/wait-for-it.sh:/wait-for-it.sh
+    entrypoint: ["/wait-for-it.sh", "mysql:3306", "30", "--"]
     command: [
-      "/wait-for-it.sh", "mysql:3306", "30", "--",
-      "migrate", "-path=/migrations",
-      "-database=mysql://test:test@tcp(mysql:3306)/mydatabase", "up"
+      "migrate",
+      "-path=/migrations",
+      "-database=mysql://test:test@tcp(mysql:3306)/mydatabase",
+      "up"
     ]
-
     depends_on:
       - mysql
     restart: "no"
 
+  # 🟨 Go Backend (attend MySQL via entrypoint.sh)
   backend_golang:
     build:
       context: ./backend_golang
@@ -37,6 +44,8 @@ services:
       - "8080:8080"
     env_file:
       - ./backend_golang/.env
+    environment:
+      - GIN_MODE=release
     depends_on:
       - mysql
     restart: unless-stopped

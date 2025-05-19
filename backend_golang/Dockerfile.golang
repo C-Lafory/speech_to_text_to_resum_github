@@ -1,3 +1,4 @@
+# Étape 1 : Build statique
 FROM golang:1.23-alpine AS builder
 WORKDIR /build
 
@@ -7,13 +8,21 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/main.go
 
+# Étape 2 : Image minimale
 FROM alpine:3.19
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata netcat-openbsd
 
 WORKDIR /app
+
+# Binaire Go
 COPY --from=builder /build/main /app/main
+
+# Scripts
 COPY wait-for-it.sh /wait-for-it.sh
 COPY entrypoint.sh /entrypoint.sh
+
+# Droits d'exécution
 RUN chmod +x /wait-for-it.sh /entrypoint.sh /app/main
 
+# Démarrage
 ENTRYPOINT ["/entrypoint.sh"]
