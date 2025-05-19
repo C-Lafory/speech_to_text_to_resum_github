@@ -1,48 +1,15 @@
-# Étape 1 : Compilation
+# STAGE 1: BUILD
 FROM golang:1.23-alpine AS builder
-
-# Répertoire de travail pour la compilation
 WORKDIR /build
-
-# Copier d'abord les fichiers de dépendances
 COPY go.mod go.sum ./
 RUN go mod download
-
-# Copier le reste des fichiers
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/main.go
 
-# Compilation du binaire Go
-RUN CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/main.go
-
-# Vérification que le binaire existe
-RUN ls -la /build/main
-
-# Étape 2 : Image finale minimaliste
+# STAGE 2: RUNTIME
 FROM alpine:3.19
-
-# Installation des dépendances nécessaires
-RUN apk add --no-cache ca-certificates tzdata file
-
-# Définir le répertoire de travail final
+RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
-
-# Copier le binaire depuis l'étape de build
 COPY --from=builder /build/main /app/main
-
-# Donner les permissions d'exécution
 RUN chmod +x /app/main
-
-# Vérification que le binaire existe et a les bonnes permissions
-RUN ls -la /app/main
-
-# Vérification du type de fichier
-RUN file /app/main
-
-# Vérification des dépendances
-RUN ldd /app/main || true
-
-# Exposer le port du serveur
-EXPOSE 8080
-
-# Démarrer l'application Go
 CMD ["/app/main"]
