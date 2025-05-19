@@ -18,7 +18,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/main.go
 RUN ls -la /app/main
 
 # Étape 2 : Image finale minimaliste
-FROM alpine:latest
+FROM alpine:3.19
+
+# Installation des dépendances nécessaires
+RUN apk add --no-cache ca-certificates tzdata
 
 # Définir le répertoire de travail final
 WORKDIR /app
@@ -26,7 +29,10 @@ WORKDIR /app
 # Copier le binaire depuis l'étape de build
 COPY --from=builder /app/main /app/main
 
-# Vérification que le binaire existe dans l'image finale
+# Donner les permissions d'exécution
+RUN chmod +x /app/main
+
+# Vérification que le binaire existe et a les bonnes permissions
 RUN ls -la /app/main
 
 # Exposer le port du serveur
