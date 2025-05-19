@@ -28,3 +28,11 @@ RUN echo "==> Starting go build..." \
  && echo "==> Build completed!" \
  && ls -la /build/main \
  && file /build/main
+
+ # STAGE 2: RUNTIME
+FROM alpine:3.19
+# RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /app
+COPY --from=builder /build/main /app/main
+RUN chmod +x /app/main
+CMD ["/app/main"]
