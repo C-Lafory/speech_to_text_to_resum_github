@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Compilation du binaire Go
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/main.go
 
 # Vérification que le binaire existe
 RUN ls -la /build/main
@@ -21,7 +21,7 @@ RUN ls -la /build/main
 FROM alpine:3.19
 
 # Installation des dépendances nécessaires
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata file
 
 # Définir le répertoire de travail final
 WORKDIR /app
