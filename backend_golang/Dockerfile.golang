@@ -1,3 +1,24 @@
+# # Étape 1 : Build statique
+# FROM golang:1.23-alpine AS builder
+# WORKDIR /build
+
+# COPY go.mod go.sum ./
+# RUN go mod download
+
+# COPY . .
+# RUN CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/main.go
+
+# # Étape 2 : Image finale minimale
+# FROM alpine:3.19
+# RUN apk add --no-cache ca-certificates tzdata
+
+# WORKDIR /app
+# COPY --from=builder /build/main /app/main
+# RUN chmod +x /app/main
+
+# EXPOSE 8080
+# CMD ["/app/main"]
+
 # Étape 1 : Build statique
 FROM golang:1.23-alpine AS builder
 WORKDIR /build
@@ -8,13 +29,17 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/main.go
 
-# Étape 2 : Image finale minimale
+# Étape 2 : Image minimale
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 COPY --from=builder /build/main /app/main
-RUN chmod +x /app/main
 
-EXPOSE 8080
-CMD ["/app/main"]
+# 👇 Copie des scripts d'attente
+COPY wait-for-it.sh /wait-for-it.sh
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /wait-for-it.sh /entrypoint.sh /app/main
+
+# Lancement via script de démarrage
+ENTRYPOINT ["/entrypoint.sh"]
