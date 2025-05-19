@@ -1,12 +1,9 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"os/exec"
 
 	"api/database"
 	"api/handlers"
@@ -21,7 +18,7 @@ func main() {
 	defer database.DB.Close()
 
 	// Chargement éventuel des modèles Python
-	initPythonModels()
+	// initPythonModels()
 
 	// Initialisation du routeur
 	router := setupRoutes()
@@ -33,27 +30,27 @@ func main() {
 	}
 }
 
-func initPythonModels() {
-	if _, err := os.Stat("models/"); errors.Is(err, os.ErrNotExist) {
-		fmt.Println("📥 Modèles non trouvés. Téléchargement en cours...")
+// func initPythonModels() {
+// 	if _, err := os.Stat("models/"); errors.Is(err, os.ErrNotExist) {
+// 		fmt.Println("📥 Modèles non trouvés. Téléchargement en cours...")
 
-		commands := [][]string{
-			{"./backend_python/venv312/bin/python3", "./backend_python/init_models.py"},
-			{"./backend_python/venv310/bin/python3", "./backend_python/init_models.py"},
-		}
+// 		commands := [][]string{
+// 			{"./backend_python/venv312/bin/python3", "./backend_python/init_models.py"},
+// 			{"./backend_python/venv310/bin/python3", "./backend_python/init_models.py"},
+// 		}
 
-		for _, cmdArgs := range commands {
-			cmd := exec.Command(cmdArgs[0], cmdArgs[1])
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				log.Fatalf("❌ Erreur d'exécution du script Python %s : %v", cmdArgs[1], err)
-			}
-		}
+// 		for _, cmdArgs := range commands {
+// 			cmd := exec.Command(cmdArgs[0], cmdArgs[1])
+// 			cmd.Stdout = os.Stdout
+// 			cmd.Stderr = os.Stderr
+// 			if err := cmd.Run(); err != nil {
+// 				log.Fatalf("❌ Erreur d'exécution du script Python %s : %v", cmdArgs[1], err)
+// 			}
+// 		}
 
-		fmt.Println("✅ Modèles Python téléchargés.")
-	}
-}
+// 		fmt.Println("✅ Modèles Python téléchargés.")
+// 	}
+// }
 
 func setupRoutes() http.Handler {
 	mux := http.NewServeMux()
