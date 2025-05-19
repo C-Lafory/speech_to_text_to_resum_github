@@ -18,12 +18,12 @@ services:
     container_name: db_migrate
     volumes:
       - ./backend_golang/migrations:/migrations
-    command:
-      [
-        "-path=/migrations",
-        "-database=mysql://test:test@tcp(mysql:3306)/mydatabase",
-        "up"
-      ]
+    command: [
+      "/wait-for-it.sh", "mysql:3306", "30", "--",
+      "migrate", "-path=/migrations",
+      "-database=mysql://test:test@tcp(mysql:3306)/mydatabase", "up"
+    ]
+
     depends_on:
       - mysql
     restart: "no"

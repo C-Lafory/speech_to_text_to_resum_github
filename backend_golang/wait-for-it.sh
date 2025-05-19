@@ -1,45 +1,39 @@
 #!/bin/sh
 
 HOSTPORT="$1"
-shift
+TIMEOUT="$2"
 
-# Valeur par défaut du timeout
-TIMEOUT=15
+# Vérification des arguments
+if [ -z "$HOSTPORT" ] || [ -z "$TIMEOUT" ]; then
+  echo "Usage: $0 host:port timeout_in_seconds -- command_to_run"
+  exit 1
+fi
 
-# Lecture des arguments supplémentaires
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --timeout=*)
-      TIMEOUT="${1#*=}"
-      ;;
-    --timeout)
-      shift
-      TIMEOUT="$1"
-      ;;
-    --)
-      shift
-      break
-      ;;
-  esac
-  shift
-done
-
+# Extraire hôte et port
 HOST=$(echo "$HOSTPORT" | cut -d: -f1)
 PORT=$(echo "$HOSTPORT" | cut -d: -f2)
 
 echo "⏳ Attente de $HOST:$PORT pendant $TIMEOUT secondes..."
 
-end=$((SECONDS+TIMEOUT))
+# Calcul du temps d'attente
+START_TIME=$(date +%s)
 
-while [ $SECONDS -lt $end ]; do
+while true; do
   nc -z "$HOST" "$PORT" >/dev/null 2>&1
   if [ $? -eq 0 ]; then
     echo "✅ $HOST:$PORT est disponible."
+    shift 3  # ignorer host:port, timeout, et "--"
     exec "$@"
     exit 0
   fi
+
+  CURRENT_TIME=$(date +%s)
+  ELAPSED=$((CURRENT_TIME - START_TIME))
+
+  if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+    echo "❌ Timeout après $TIMEOUT secondes en attendant $HOST:$PORT"
+    exit 1
+  fi
+
   sleep 1
 done
-
-echo "❌ Timeout après $TIMEOUT secondes en attendant $HOST:$PORT"
-exit 1
