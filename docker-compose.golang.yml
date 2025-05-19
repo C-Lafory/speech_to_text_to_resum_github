@@ -1,7 +1,4 @@
-# ✅ Nouveau fichier : docker-compose.golang.yml
-
 services:
-  # 🐬 MySQL Database
   mysql:
     image: mysql:8.0
     container_name: mysql
@@ -16,23 +13,21 @@ services:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
 
-  # 🔁 Migration Service avec wait-for-it
-  migrate:
+  db_migrate:
     image: migrate/migrate
     container_name: db_migrate
     volumes:
       - ./backend_golang/migrations:/migrations
-      - ./backend_golang/wait-for-it.sh:/wait-for-it.sh
-    command: [
-      "/wait-for-it.sh", "mysql:3306", "--timeout=30", "--strict", "--",
-      "migrate", "-path=/migrations",
-      "-database=mysql://test:test@tcp(mysql:3306)/mydatabase", "up"
-    ]
+    command:
+      [
+        "-path=/migrations",
+        "-database=mysql://test:test@tcp(mysql:3306)/mydatabase",
+        "up"
+      ]
     depends_on:
       - mysql
     restart: "no"
 
-  # 🚀 Backend Go avec wait-for-it intégré dans entrypoint.sh
   backend_golang:
     build:
       context: ./backend_golang
@@ -42,8 +37,6 @@ services:
       - "8080:8080"
     env_file:
       - ./backend_golang/.env
-    environment:
-      - GIN_MODE=release
     depends_on:
       - mysql
     restart: unless-stopped
