@@ -56,10 +56,6 @@ def text_to_speech(text: str, output_path: str):
         tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False, gpu=False)
         tts.to("cpu")
         
-        # Configuration explicite de la langue française
-        tts.languages = ["fr"]
-        logging.info("Langue française configurée")
-        
         # Vérification des locuteurs
         if not hasattr(tts, 'speakers') or not tts.speakers:
             raise RuntimeError("Le modèle TTS n'a pas de locuteurs configurés")
@@ -68,7 +64,8 @@ def text_to_speech(text: str, output_path: str):
         for i, chunk in enumerate(text_chunks):
             temp_wav = f"temp_chunk_{i}.wav"
             logging.info(f"🎙️ Synthèse {i+1}/{len(text_chunks)}...")
-            tts.tts_to_file(text=chunk, speaker=tts.speakers[0], language="fr", file_path=temp_wav)
+            # Le modèle est déjà configuré pour le français, pas besoin de spécifier la langue
+            tts.tts_to_file(text=chunk, speaker=tts.speakers[0], file_path=temp_wav)
             temp_files.append(temp_wav)
 
         # Concat
