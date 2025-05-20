@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"api/database/queries"
-	"api/utils"
 	"context"
 	"database/sql"
 	"errors"
@@ -10,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
+	database "api/database/queries"
+	"api/utils"
 )
 
 // Clé de contexte pour l'ID utilisateur
@@ -36,7 +35,10 @@ func AuthMiddleware(db *sql.DB) func(http.Handler) http.Handler {
 			}
 			tokenRaw := parts[1]
 
-			session, err := database.GetSessionByToken(db, tokenRaw)
+			// Hasher le token reçu pour le comparer avec celui en base
+			tokenHash := utils.HashToken(tokenRaw)
+
+			session, err := database.GetSessionByToken(db, tokenHash)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					utils.RespondWithMessage(w, http.StatusUnauthorized, "Invalid or expired session.")
@@ -48,11 +50,6 @@ func AuthMiddleware(db *sql.DB) func(http.Handler) http.Handler {
 
 			if session.ExpiresAt.Before(time.Now()) {
 				utils.RespondWithMessage(w, http.StatusUnauthorized, "Session has expired.")
-				return
-			}
-
-			if err := bcrypt.CompareHashAndPassword([]byte(session.Token), []byte(tokenRaw)); err != nil {
-				utils.RespondWithMessage(w, http.StatusUnauthorized, "Invalid session token.")
 				return
 			}
 
