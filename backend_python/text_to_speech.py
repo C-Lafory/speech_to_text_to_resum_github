@@ -33,10 +33,10 @@ def init_tts_config():
         import json
         TTS_CONFIG = json.load(f)
         
-    if not TTS_CONFIG.get("speakers"):
-        raise RuntimeError("Aucun locuteur configuré dans le modèle TTS")
+    # if not TTS_CONFIG.get("speakers"):
+    #     raise RuntimeError("Aucun locuteur configuré dans le modèle TTS")
         
-    logging.info(f"✅ Configuration TTS chargée avec {len(TTS_CONFIG['speakers'])} locuteur(s)")
+    logging.info(f"✅ Configuration TTS chargée")
     return TTS_CONFIG
 
 def convert_numbers_to_words(text: str, lang: str = "fr") -> str:
