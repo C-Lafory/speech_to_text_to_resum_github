@@ -30,7 +30,7 @@ func CreateUser(db *sql.DB, user *models.UserInfos) error {
 }
 
 func CreateSession(db *sql.DB, userID int, tokenHash string, expiresAt time.Time) error {
-	query := "INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)"
+	query := "INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?, ?, ?)"
 	_, err := db.Exec(query, userID, tokenHash, expiresAt)
 	return err
 }
