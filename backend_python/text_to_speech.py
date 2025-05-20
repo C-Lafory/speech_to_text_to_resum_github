@@ -87,7 +87,8 @@ def text_to_speech(text: str, output_path: str):
         for i, chunk in enumerate(text_chunks):
             temp_wav = f"temp_chunk_{i}.wav"
             logging.info(f"🎙️ Synthèse {i+1}/{len(text_chunks)}...")
-            tts.tts_to_file(text=chunk, speaker=config["speakers"][0], file_path=temp_wav)
+            # Le modèle CSS10 n'est pas multi-locuteurs, donc on ne spécifie pas de locuteur
+            tts.tts_to_file(text=chunk, file_path=temp_wav)
             temp_files.append(temp_wav)
 
         # Concat

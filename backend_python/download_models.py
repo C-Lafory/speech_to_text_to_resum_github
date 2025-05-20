@@ -58,23 +58,12 @@ def download_tts_models():
     tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False)
     tts.to("cpu")
     
-    # Vérification et configuration du locuteur
-    speakers = []
-    if hasattr(tts, 'speakers') and tts.speakers:
-        speakers = tts.speakers
-        logging.info(f"✅ TTS OK. Locuteurs disponibles : {speakers}")
-    else:
-        # Pour le modèle français CSS10, nous utilisons le locuteur par défaut
-        speakers = ["p226"]  # Locuteur par défaut pour le modèle CSS10
-        logging.info(f"ℹ️ Utilisation du locuteur par défaut : {speakers[0]}")
-    
     # Sauvegarde de la configuration
     config_path = TTS_MODEL_DIR / "tts_config.json"
     with open(config_path, "w") as f:
         import json
         json.dump({
             "model_name": TTS_MODEL_NAME,
-            "speakers": speakers,
             "languages": ["fr"]
         }, f, indent=2)
     
