@@ -1,7 +1,8 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header
 import os
 import secrets
-from transcription import transcribe_audio
+import tempfile
+from transcription import transcribe_audio, check_audio_format
 from resume import summarize_text
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
@@ -31,22 +32,40 @@ async def verify_api_key(x_api_key: str = Header(...)):
 @app.post("/transcribe")
 async def transcribe(audio_file: UploadFile = File(...), api_key: str = Depends(verify_api_key)):
     try:
-        # Créer un fichier temporaire
-        temp_file = f"/tmp/{audio_file.filename}"
+        # Vérifier le type de fichier
+        if not audio_file.filename:
+            raise HTTPException(status_code=400, detail="Nom de fichier manquant")
         
-        # Sauvegarder le fichier audio
-        with open(temp_file, "wb") as f:
-            shutil.copyfileobj(audio_file.file, f)
-        
-        # Transcrire l'audio
-        transcription = transcribe_audio(temp_file)
-        
-        # Nettoyer le fichier temporaire
-        os.remove(temp_file)
-        
-        return {"transcription": transcription}
+        # Créer un fichier temporaire avec un nom unique
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_file.filename)[1]) as temp_file:
+            logger.info(f"Création du fichier temporaire : {temp_file.name}")
+            
+            # Sauvegarder le fichier audio
+            shutil.copyfileobj(audio_file.file, temp_file)
+            
+            # Vérifier le format audio
+            if not check_audio_format(temp_file.name):
+                os.unlink(temp_file.name)
+                raise HTTPException(status_code=400, detail="Format audio non supporté")
+            
+            # Transcrire l'audio
+            logger.info(f"Début de la transcription du fichier : {temp_file.name}")
+            transcription = transcribe_audio(temp_file.name)
+            logger.info("Transcription terminée avec succès")
+            
+            # Nettoyer le fichier temporaire
+            os.unlink(temp_file.name)
+            
+            return {"transcription": transcription}
+            
     except Exception as e:
         logger.error(f"Erreur lors de la transcription : {str(e)}")
+        # Nettoyer le fichier temporaire en cas d'erreur
+        if 'temp_file' in locals():
+            try:
+                os.unlink(temp_file.name)
+            except:
+                pass
         raise HTTPException(status_code=500, detail=str(e))
 
 
