@@ -10,14 +10,17 @@ import (
 	"os"
 )
 
-const baseURL = "http://main_api:8000"
-const ttsURL = "http://tts_service:8001"
+const (
+	baseURL = "http://main_api:8000"
+	ttsURL  = "http://tts_service:8001"
+)
+
 var apiKey = os.Getenv("INTERNAL_API_KEY")
 
 func Transcribe(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error opening file: %v", err)
 	}
 	defer file.Close()
 
@@ -25,36 +28,38 @@ func Transcribe(filePath string) (string, error) {
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("audio_file", filePath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error creating form file: %v", err)
 	}
 	if _, err := io.Copy(part, file); err != nil {
-		return "", err
+		return "", fmt.Errorf("error copying file content: %v", err)
 	}
 	writer.Close()
 
 	req, err := http.NewRequest("POST", baseURL+"/transcribe", body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error creating request: %v", err)
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("x-api-key", apiKey)
 
+	fmt.Printf("Sending request to %s with API key: %s\n", baseURL+"/transcribe", apiKey)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error sending request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("transcription failed: %s", b)
+		return "", fmt.Errorf("transcription failed (status %d): %s", resp.StatusCode, string(b))
 	}
 
 	var result struct {
 		Transcription string `json:"transcription"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
+		return "", fmt.Errorf("error decoding response: %v", err)
 	}
 	return result.Transcription, nil
 }
