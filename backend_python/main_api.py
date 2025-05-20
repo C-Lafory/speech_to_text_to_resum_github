@@ -29,17 +29,21 @@ async def verify_api_key(x_api_key: str = Header(...)):
 
 
 @app.post("/transcribe")
-async def transcribe(file: UploadFile = File(...), api_key: str = Depends(verify_api_key)):
+async def transcribe(audio_file: UploadFile = File(...), api_key: str = Depends(verify_api_key)):
     try:
-        # Chemin du fichier créé par Golang
-        file_path = f"/tmp/static/file/user_2/f44ef1e3-b16f-4e84-9cd2-605699743237/audio.qt"
+        # Créer un fichier temporaire
+        temp_file = f"/tmp/{audio_file.filename}"
         
-        # Vérifier si le fichier existe
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Fichier audio non trouvé")
+        # Sauvegarder le fichier audio
+        with open(temp_file, "wb") as f:
+            shutil.copyfileobj(audio_file.file, f)
         
         # Transcrire l'audio
-        transcription = transcribe_audio(file_path)
+        transcription = transcribe_audio(temp_file)
+        
+        # Nettoyer le fichier temporaire
+        os.remove(temp_file)
+        
         return {"transcription": transcription}
     except Exception as e:
         logger.error(f"Erreur lors de la transcription : {str(e)}")
