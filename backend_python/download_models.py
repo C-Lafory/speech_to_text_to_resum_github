@@ -53,8 +53,28 @@ def download_tts_models():
     from TTS.api import TTS
     logging.info("📥 Téléchargement du modèle TTS...")
     TTS_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    TTS(model_name=TTS_MODEL_NAME).to("cpu")
-    logging.info("✅ TTS OK.")
+    
+    # Initialisation du modèle avec un locuteur spécifique
+    tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False)
+    tts.to("cpu")
+    
+    # Vérification et configuration du locuteur
+    if hasattr(tts, 'speakers') and tts.speakers:
+        logging.info(f"✅ TTS OK. Locuteurs disponibles : {tts.speakers}")
+    else:
+        logging.warning("⚠️ Aucun locuteur détecté dans le modèle TTS")
+    
+    # Sauvegarde de la configuration
+    config_path = TTS_MODEL_DIR / "tts_config.json"
+    with open(config_path, "w") as f:
+        import json
+        json.dump({
+            "model_name": TTS_MODEL_NAME,
+            "speakers": tts.speakers if hasattr(tts, 'speakers') else [],
+            "languages": ["fr"]
+        }, f, indent=2)
+    
+    logging.info("✅ Configuration TTS sauvegardée.")
 
 def main():
     check_disk_space()

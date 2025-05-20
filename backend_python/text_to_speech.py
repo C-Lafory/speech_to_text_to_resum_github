@@ -7,13 +7,37 @@ import gc
 from typing import List
 from TTS.api import TTS
 from num2words import num2words
-from config import TTS_MODEL_NAME
+from config import TTS_MODEL_NAME, TTS_MODEL_DIR
 
 # Logs
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 WAV_TEMP_FILE = "output.wav"
 MAX_TEXT_LENGTH = 5000
+
+# Configuration globale TTS
+TTS_CONFIG = None
+
+def init_tts_config():
+    """Initialise la configuration TTS une seule fois au démarrage"""
+    global TTS_CONFIG
+    
+    if TTS_CONFIG is not None:
+        return TTS_CONFIG
+        
+    config_path = TTS_MODEL_DIR / "tts_config.json"
+    if not config_path.exists():
+        raise RuntimeError("Configuration TTS non trouvée. Exécutez d'abord download_models.py")
+
+    with open(config_path) as f:
+        import json
+        TTS_CONFIG = json.load(f)
+        
+    if not TTS_CONFIG.get("speakers"):
+        raise RuntimeError("Aucun locuteur configuré dans le modèle TTS")
+        
+    logging.info(f"✅ Configuration TTS chargée avec {len(TTS_CONFIG['speakers'])} locuteur(s)")
+    return TTS_CONFIG
 
 def convert_numbers_to_words(text: str, lang: str = "fr") -> str:
     def replace_number(match):
@@ -52,20 +76,18 @@ def text_to_speech(text: str, output_path: str):
         if not TTS_MODEL_NAME.startswith("tts_models/fr/"):
             raise RuntimeError(f"Le modèle {TTS_MODEL_NAME} n'est pas un modèle français")
 
-        # Initialisation du modèle avec la langue française
+        # Utilisation de la configuration globale
+        config = init_tts_config()
+
+        # Initialisation du modèle avec la configuration
         tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False, gpu=False)
         tts.to("cpu")
-        
-        # Vérification des locuteurs
-        if not hasattr(tts, 'speakers') or not tts.speakers:
-            raise RuntimeError("Le modèle TTS n'a pas de locuteurs configurés")
         
         # Synthèse de chaque chunk
         for i, chunk in enumerate(text_chunks):
             temp_wav = f"temp_chunk_{i}.wav"
             logging.info(f"🎙️ Synthèse {i+1}/{len(text_chunks)}...")
-            # Le modèle est déjà configuré pour le français, pas besoin de spécifier la langue
-            tts.tts_to_file(text=chunk, speaker=tts.speakers[0], file_path=temp_wav)
+            tts.tts_to_file(text=chunk, speaker=config["speakers"][0], file_path=temp_wav)
             temp_files.append(temp_wav)
 
         # Concat
