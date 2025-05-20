@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import * as FileSystem from "expo-file-system";
+import { getToken } from "../utils/token_save_get_delete";
 
 // Contexte pour gérer les enregistrements audio.
 // Permet de charger, envoyer et supprimer des enregistrements audio.
@@ -77,37 +78,37 @@ export function PlayerProvider({ children }: any) {
 
     const loadRecordings = async () => {
         try {
-            console.log('dans playerCOntext loeadrecordings Fetching recordings from backend...');
-          // Charger les fichiers audio locaux
-        //   const files = await FileSystem.readDirectoryAsync(`${FileSystem.documentDirectory}recordings/`);
-        //   const localRecordings = files.filter(file => file.endsWith('.m4a'));
-        //   setRecordings(localRecordings);
-      
-          // Récupérer les données depuis le backend
-          const response = await fetch('http://vps-692a3a83.vps.ovh.net:5049/api/recordings', {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-      
-          if (!response.ok) {
-            throw new Error('Failed to fetch recordings from server');
-          }
+            console.log('Fetching recordings from backend...');
+            const token = await getToken();
+            if (!token) {
+                throw new Error("No token found");
+            }
 
-          const serverData: RecordingData[] = await response.json();
-          console.log('Recordings fetched from server:', serverData);
-      
-          // Mettre à jour l'état avec les données du backend
-          setJsonContent(serverData);
-          return serverData;
+            const response = await fetch('http://vps-692a3a83.vps.ovh.net:5048/api/files', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch recordings from server');
+            }
+
+            const serverData: RecordingData[] = await response.json();
+            console.log('Recordings fetched from server:', serverData);
+
+            // Mettre à jour l'état avec les données du backend
+            setJsonContent(serverData);
+            return serverData;
         } catch (error) {
-          console.error('Error loading recordings:', error);
+            console.error('Error loading recordings:', error);
             return [];
         }
-      };
+    };
 
-      const saveJsonToFile = async (json: any) => {
+    const saveJsonToFile = async (json: any) => {
         const directory = FileSystem.documentDirectory;
         if (!directory) {
             console.error("FileSystem.documentDirectory is null");
@@ -125,34 +126,52 @@ export function PlayerProvider({ children }: any) {
 
     const sendRecording = async (uri: string) => {
         setIsLoadingJson(true);
-        const data = await convertRecordingToBase64(uri);
         try {
-            // console.log("PlayerContext Sending recording to API", data);
-            const response = await fetch("http://vps-692a3a83.vps.ovh.net:5050/api/audio", {
-                mode: "no-cors",
+            // Créer un FormData
+            const formData = new FormData();
+            formData.append('file', {
+                uri: uri,
+                type: 'audio/mp4',
+                name: `recording-${Date.now()}.m4a`
+            });
+
+            // Récupérer le token
+            const token = await getToken();
+            if (!token) {
+                throw new Error("No token found");
+            }
+
+            // Envoyer la requête
+            const response = await fetch("http://vps-692a3a83.vps.ovh.net:5048/api/audio", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
                 },
-                body: JSON.stringify(data),
+                body: formData
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const json = await response.json();
-            console.log("playerContext mon json :", json);
+            console.log("Response from server:", json);
 
             const normalizedJson = {
                 audioUri: uri,
-                transcription: json.Transcription ?? json.transcription ?? "",
-                summary: json.Resume ?? json.summary ?? "",
+                transcription: json.transcript ?? "",
+                summary: json.summary ?? "",
             };
 
             const jsonFileUri = await saveJsonToFile(normalizedJson);
-            console.log("playercontext Saved transcription to local file:", jsonFileUri);
+            console.log("Saved transcription to local file:", jsonFileUri);
 
-            // met a jour jsonContent pour relancer le rendu
+            // Mettre à jour jsonContent pour relancer le rendu
             setJsonContent(prev => [...prev, normalizedJson]);
             setIsLoadingJson(false);
         } catch (err) {
             console.error("Failed to send recording", err);
+            setIsLoadingJson(false);
         }
     };
 

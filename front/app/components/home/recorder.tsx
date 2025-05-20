@@ -66,27 +66,20 @@ export default function Recorder() {
 
             console.log("Recording moved to", newUri);
 
-            // Convert the recording to base64
             if (newUri && sendRecording) {
-                sendRecording(newUri);
-
-                // Supprimer le fichier local après l'envoi
-                // await FileSystem.deleteAsync(newUri);
-                // console.log("Local recording deleted after upload");
+                await sendRecording(newUri);
+                await loadRecordings();
             }
-
-            loadRecordings();
 
             setRecording(null);
             setIsRecording(false);
         } else {
             try {
-
                 console.log("Requesting permissions..");
-
                 const { status } = await Audio.requestPermissionsAsync();
                 if (status !== "granted") {
                     alert("Permission to access microphone is required!");
+                    return;
                 }
 
                 await Audio.setAudioModeAsync({
@@ -101,12 +94,12 @@ export default function Recorder() {
                 
                 setRecording(recording);
                 console.log("Recording started");
+                setIsRecording(true);
             } catch (err) {
                 console.error("Failed to start recording", err);
             }
         }
-        setIsRecording(!isRecording);
-    }
+    };
 
     return (
         <View>

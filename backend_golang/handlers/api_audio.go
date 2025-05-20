@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,16 +34,44 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		var audioinfo models.AudioInfos
-		if err := json.NewDecoder(r.Body).Decode(&audioinfo); err != nil {
-			utils.RespondWithMessage(w, http.StatusBadRequest, "Invalid JSON")
+		// Parse multipart form
+		err := r.ParseMultipartForm(10 << 20) // 10 MB max
+		if err != nil {
+			utils.RespondWithMessage(w, http.StatusBadRequest, "Error parsing form")
 			return
+		}
+
+		// Get file from form
+		file, handler, err := r.FormFile("file")
+		if err != nil {
+			utils.RespondWithMessage(w, http.StatusBadRequest, "Error retrieving file")
+			return
+		}
+		defer file.Close()
+
+		// Create audio info
+		audioinfo := models.AudioInfos{
+			Filename: handler.Filename,
 		}
 
 		audioUUID := uuid.NewString()
 		absPath, dbPath, err := models.SaveAudioFileWithUUID(userID, audioUUID, audioinfo)
 		if err != nil {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, fmt.Sprintf("Error saving audio: %v", err))
+			return
+		}
+
+		// Create destination file
+		dst, err := os.Create(absPath)
+		if err != nil {
+			utils.RespondWithMessage(w, http.StatusInternalServerError, "Error creating file")
+			return
+		}
+		defer dst.Close()
+
+		// Copy file content
+		if _, err := io.Copy(dst, file); err != nil {
+			utils.RespondWithMessage(w, http.StatusInternalServerError, "Error saving file")
 			return
 		}
 
@@ -77,7 +105,7 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 		}
 
 		// 💾 Enregistrement DB
-		file := models.File{
+		fileRecord := models.File{
 			UserID:            userID,
 			AudioInputPath:    dbPath,
 			TranscriptionPath: strings.TrimPrefix(transPath, "./static"),
@@ -85,7 +113,7 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 			AudioOutputPath:   strings.TrimPrefix(audioOutPath, "./static"),
 			CreatedAt:         time.Now(),
 		}
-		if err := database.InsertFileRecord(db, &file); err != nil {
+		if err := database.InsertFileRecord(db, &fileRecord); err != nil {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, "Error saving file in DB")
 			return
 		}
@@ -93,9 +121,9 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 		// ✅ Réponse
 		utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 			"message":     "Audio processed successfully.",
-			"transcript":  file.TranscriptionPath,
-			"summary":     file.SummaryPath,
-			"audio_final": file.AudioOutputPath,
+			"transcript":  fileRecord.TranscriptionPath,
+			"summary":     fileRecord.SummaryPath,
+			"audio_final": fileRecord.AudioOutputPath,
 		})
 	}
 }
