@@ -52,15 +52,13 @@ def text_to_speech(text: str, output_path: str):
         if not TTS_MODEL_NAME.startswith("tts_models/fr/"):
             raise RuntimeError(f"Le modèle {TTS_MODEL_NAME} n'est pas un modèle français")
 
-        # Initialisation du modèle
-        tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False).to("cpu")
+        # Initialisation du modèle avec la langue française
+        tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False, gpu=False)
+        tts.to("cpu")
         
-        # Vérification des langues disponibles
-        if not hasattr(tts, 'languages') or not tts.languages:
-            raise RuntimeError("Le modèle TTS n'a pas de langues configurées")
-        
-        if "fr" not in tts.languages:
-            raise RuntimeError(f"Le modèle {TTS_MODEL_NAME} ne supporte pas le français")
+        # Configuration explicite de la langue française
+        tts.languages = ["fr"]
+        logging.info("Langue française configurée")
         
         # Vérification des locuteurs
         if not hasattr(tts, 'speakers') or not tts.speakers:
