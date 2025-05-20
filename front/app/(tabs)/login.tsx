@@ -7,7 +7,7 @@ import { getToken,saveToken } from '../utils/token_save_get_delete';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   // const navigation = useNavigation();
 
@@ -23,66 +23,42 @@ const LoginPage = () => {
   };
 
   const handleLogin = async () => {
-    // Handle login logic here
-    if (email && password) {
-      console.log('Login check', `yur Emailconnection, ${email}!`);
-    } else {
-      console.log('Error', 'Please enter both ID and password.');
-      Alert.alert('Please fill in all fields.');
+    if (!username || !password) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
       return;
     }
-    // il faut comenter navigation.navigate('Main'); si je veux tester le fetch et le decommanter pour acceder a mon record description
-    // navigation.navigate('Main');
+
     try {
-      // Envoyer les données au backend
-      const response = await fetch('http://vps-692a3a83.vps.ovh.net:5050/login', {
+      const response = await fetch('http://vps-692a3a83.vps.ovh.net:5048/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
-          Email: email,
-          password: password,
+          username: username,
+          password: password
         }),
       });
-  
-      //verification de la reponse en brut 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      // pour lire la response en brut si j'ai besoin de debugg
-      // const textResponse = await response.text();
-      // console.log('Raw response from server:', textResponse);
 
-      const data = await response.json(); // Lire directement en JSON
-      console.log('Response from server:', data);
-      
-      // stockage du session token en local, en acces dans toute l'appli
-      if (data.Tokken) {
-        await saveToken(data.Tokken);
-        console.log('Token stored successfully');
-      }else {
-        console.log('Token not found in response');
-        throw new Error('Token not found in response, cannot proceed with login');
-      }
-      // pour verifier que le token est bien stocker (a supprimer)
-      const token = await getToken();
-      if (token) {
-        // Utilisez le token ici
-        console.log('Token retrieved:', token);
-      } else {
-        console.warn('Aucun token trouvé.');
-      }
-    
+      const data = await response.json();
+      console.log('Réponse du serveur:', data);
+
       if (response.ok) {
-        Alert.alert('Login Successful', `Welcome back, ${email}`);
-        navigation.navigate('Main'); // Naviguer vers TabLayout
+        if (data.token) {
+          await saveToken(data.token);
+          console.log('Token stocké avec succès');
+          Alert.alert('Connexion réussie', `Bienvenue, ${username}!`);
+          navigation.navigate('Main');
+        } else {
+          Alert.alert('Erreur', 'Token non reçu du serveur');
+        }
       } else {
-        Alert.alert('Login Failed', data.message || 'Invalid credentials');
+        Alert.alert('Échec de la connexion', data.message || 'Identifiants invalides');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Error', 'An error occurred. Please try again.');
+      console.error('Erreur de connexion:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
     }
   };
 
@@ -90,19 +66,19 @@ const LoginPage = () => {
     <View style={styles.container}>
       <TextInput
         style={styles.input}
-        placeholder="Enter ID"
-        value={email}
-        onChangeText={setEmail}
+        placeholder="Nom d'utilisateur"
+        value={username}
+        onChangeText={setUsername}
       />
       <TextInput
         style={styles.input}
-        placeholder="Enter Password"
+        placeholder="Mot de passe"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
-      <Button title="Login" onPress={handleLogin} />
-      <Button title="register now" onPress={navigateToRegister} />
+      <Button title="Se connecter" onPress={handleLogin} />
+      <Button title="Créer un compte" onPress={navigateToRegister} />
       <Button title="Acceder a l'appli" onPress={navigateToMain} />
     </View>
   );
