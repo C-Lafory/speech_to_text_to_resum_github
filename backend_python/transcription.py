@@ -12,16 +12,44 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-SUPPORTED_FORMATS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.qt']
+SUPPORTED_FORMATS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac']
 
 def check_audio_format(file_path: str) -> bool:
     _, ext = os.path.splitext(file_path)
     return ext.lower() in SUPPORTED_FORMATS
 
+def convert_qt_to_wav(input_path: str, output_path: str):
+    """Convertit spécifiquement un fichier .qt en .wav"""
+    try:
+        logging.info(f"Conversion du fichier .qt : {input_path}")
+        # Utilisation de ffmpeg avec des paramètres spécifiques pour QuickTime
+        ffmpeg.input(input_path).output(
+            output_path,
+            acodec='pcm_s16le',  # Codec PCM 16-bit
+            ar=16000,            # Taux d'échantillonnage 16kHz
+            ac=1                 # Mono
+        ).run(overwrite_output=True)
+        logging.info(f"Conversion réussie vers : {output_path}")
+    except ffmpeg.Error as e:
+        logging.error(f"Erreur lors de la conversion .qt : {e.stderr.decode()}")
+        raise
+
 def convert_to_wav(input_path: str, output_path: str):
-    if not check_audio_format(input_path):
+    _, ext = os.path.splitext(input_path)
+    ext = ext.lower()
+
+    if ext == '.qt':
+        # Utiliser la conversion spécifique pour .qt
+        convert_qt_to_wav(input_path, output_path)
+    elif check_audio_format(input_path):
+        # Conversion standard pour les autres formats
+        try:
+            ffmpeg.input(input_path).output(output_path, ar=16000, ac=1).run(overwrite_output=True)
+        except ffmpeg.Error as e:
+            logging.error(f"Erreur de conversion : {e.stderr.decode()}")
+            raise
+    else:
         raise ValueError(f"Format non supporté : {input_path}")
-    ffmpeg.input(input_path).output(output_path, ar=16000, ac=1).run(overwrite_output=True)
 
 def transcribe_audio(audio_path: str) -> str:
     model: Optional[whisper.Whisper] = None
