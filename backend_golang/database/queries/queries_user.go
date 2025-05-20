@@ -38,8 +38,8 @@ func CreateSession(db *sql.DB, userID int, tokenHash string, expiresAt time.Time
 // GetSessionByToken récupère une session par son token
 func GetSessionByToken(db *sql.DB, token string) (*models.Session, error) {
 	var session models.Session
-	query := "SELECT id, user_id FROM sessions WHERE token = ?"
-	err := db.QueryRow(query, token).Scan(&session.ID, &session.UserID)
+	query := "SELECT id, user_id, expires_at FROM sessions WHERE token_hash = ?"
+	err := db.QueryRow(query, token).Scan(&session.ID, &session.UserID, &session.ExpiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("session not found")
