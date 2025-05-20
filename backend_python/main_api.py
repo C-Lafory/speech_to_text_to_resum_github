@@ -43,10 +43,10 @@ async def transcribe(audio_file: UploadFile = File(...), api_key: str = Depends(
             # Sauvegarder le fichier audio
             shutil.copyfileobj(audio_file.file, temp_file)
             
-            # Vérifier le format audio
-            if not check_audio_format(temp_file.name):
-                os.unlink(temp_file.name)
-                raise HTTPException(status_code=400, detail="Format audio non supporté")
+            # # Vérifier le format audio
+            # if not check_audio_format(temp_file.name):
+            #     os.unlink(temp_file.name)
+            #     raise HTTPException(status_code=400, detail="Format audio non supporté")
             
             # Transcrire l'audio
             logger.info(f"Début de la transcription du fichier : {temp_file.name}")
