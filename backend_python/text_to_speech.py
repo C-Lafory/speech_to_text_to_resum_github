@@ -39,7 +39,7 @@ def split_text_for_tts(text: str, max_length: int = MAX_TEXT_LENGTH) -> List[str
     return chunks
 
 def text_to_speech(text: str, output_path: str):
-    """Génère un fichier audio MP3 à partir du texte d’un résumé"""
+    """Génère un fichier audio MP3 à partir du texte d'un résumé"""
     tts = None
     temp_files = []
 
@@ -48,18 +48,29 @@ def text_to_speech(text: str, output_path: str):
         text_chunks = split_text_for_tts(cleaned_text)
         logging.info(f"📄 {len(text_chunks)} morceau(x) à synthétiser...")
 
-        tts = TTS(model_name=TTS_MODEL_NAME).to("cpu")
-        speaker = tts.speakers[0] if tts.speakers else None
-        language = "fr" if "fr" in tts.languages else tts.languages[0]
+        # Vérification du modèle
+        if not TTS_MODEL_NAME.startswith("tts_models/fr/"):
+            raise RuntimeError(f"Le modèle {TTS_MODEL_NAME} n'est pas un modèle français")
 
-        if not speaker:
-            raise RuntimeError("Aucun locuteur disponible pour ce modèle.")
-
+        # Initialisation du modèle
+        tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=False).to("cpu")
+        
+        # Vérification des langues disponibles
+        if not hasattr(tts, 'languages') or not tts.languages:
+            raise RuntimeError("Le modèle TTS n'a pas de langues configurées")
+        
+        if "fr" not in tts.languages:
+            raise RuntimeError(f"Le modèle {TTS_MODEL_NAME} ne supporte pas le français")
+        
+        # Vérification des locuteurs
+        if not hasattr(tts, 'speakers') or not tts.speakers:
+            raise RuntimeError("Le modèle TTS n'a pas de locuteurs configurés")
+        
         # Synthèse de chaque chunk
         for i, chunk in enumerate(text_chunks):
             temp_wav = f"temp_chunk_{i}.wav"
             logging.info(f"🎙️ Synthèse {i+1}/{len(text_chunks)}...")
-            tts.tts_to_file(text=chunk, speaker=speaker, language=language, file_path=temp_wav)
+            tts.tts_to_file(text=chunk, speaker=tts.speakers[0], language="fr", file_path=temp_wav)
             temp_files.append(temp_wav)
 
         # Concat
@@ -76,7 +87,7 @@ def text_to_speech(text: str, output_path: str):
 
     except Exception as e:
         logging.error(f"❌ Erreur TTS : {e}")
-        raise RuntimeError("Erreur TTS. Modèle TTS téléchargé ?")
+        raise RuntimeError(f"Erreur TTS : {str(e)}")
 
     finally:
         if tts:
