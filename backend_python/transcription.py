@@ -12,7 +12,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-SUPPORTED_FORMATS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac']
+SUPPORTED_FORMATS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.qt']
 
 def check_audio_format(file_path: str) -> bool:
     _, ext = os.path.splitext(file_path)
