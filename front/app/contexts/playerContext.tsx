@@ -93,7 +93,8 @@ export function PlayerProvider({ children }: any) {
             const formData = new FormData();
             formData.append('file', {
                 uri: uri,
-                type: 'audio/mp4'
+                type: 'audio/mp4',
+                name: 'recording.m4a'
             } as any);
 
             const response = await fetch("http://vps-692a3a83.vps.ovh.net:5048/api/audio", {
