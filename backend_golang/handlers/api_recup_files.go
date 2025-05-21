@@ -78,9 +78,14 @@ func HandlerGetUserFiles(db *sql.DB) http.HandlerFunc {
 		var fileContents []FileContent
 		for i, file := range files {
 			log.Printf("6. Traitement du fichier %d/%d", i+1, len(files))
+			log.Printf("   Chemins des fichiers:")
+			log.Printf("   - Audio Input: %s", file.AudioInput)
+			log.Printf("   - Transcription: %s", file.TranscriptionPath)
+			log.Printf("   - Summary: %s", file.SummaryPath)
+			log.Printf("   - Audio Output: %s", file.AudioOutput)
 
 			// Lecture de la transcription
-			transcriptionContent, err := os.ReadFile(file.TranscriptionPath)
+			transcriptionContent, err := os.ReadFile("./static" + file.TranscriptionPath)
 			if err != nil {
 				log.Printf("7. Erreur lecture transcription: %v", err)
 				utils.RespondWithMessage(w, http.StatusInternalServerError, "Error reading transcription file")
@@ -88,7 +93,7 @@ func HandlerGetUserFiles(db *sql.DB) http.HandlerFunc {
 			}
 
 			// Lecture du résumé
-			summaryContent, err := os.ReadFile(file.SummaryPath)
+			summaryContent, err := os.ReadFile("./static" + file.SummaryPath)
 			if err != nil {
 				log.Printf("8. Erreur lecture résumé: %v", err)
 				utils.RespondWithMessage(w, http.StatusInternalServerError, "Error reading summary file")
@@ -96,7 +101,7 @@ func HandlerGetUserFiles(db *sql.DB) http.HandlerFunc {
 			}
 
 			// Lecture de l'audio original
-			audioInputData, err := os.ReadFile(file.AudioInput)
+			audioInputData, err := os.ReadFile("./static" + file.AudioInput)
 			if err != nil {
 				log.Printf("9. Erreur lecture audio input: %v", err)
 				utils.RespondWithMessage(w, http.StatusInternalServerError, "Error reading input audio file")
@@ -104,7 +109,7 @@ func HandlerGetUserFiles(db *sql.DB) http.HandlerFunc {
 			}
 
 			// Lecture de l'audio du résumé
-			audioOutputData, err := os.ReadFile(file.AudioOutput)
+			audioOutputData, err := os.ReadFile("./static" + file.AudioOutput)
 			if err != nil {
 				log.Printf("10. Erreur lecture audio output: %v", err)
 				utils.RespondWithMessage(w, http.StatusInternalServerError, "Error reading output audio file")
