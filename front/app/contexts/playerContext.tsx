@@ -12,9 +12,11 @@ import { getToken } from "../utils/token_save_get_delete";
 // loadRecordings : Fonction pour charger les enregistrements audio.
 
 interface RecordingData {
-  audioUri: string;
-  transcription: string;
-  summary: string;
+    date: string;           // Date de création comme titre
+    transcription: string;  // Contenu de la transcription
+    summary: string;        // Contenu du résumé
+    audioInputData: string; // Données audio en base64
+    audioOutputData: string;// Données audio en base64
 }
 
 interface PlayerContextProps {
@@ -62,7 +64,12 @@ export function PlayerProvider({ children }: any) {
                 throw new Error('Failed to fetch recordings from server');
             }
 
-            const serverData: RecordingData[] = await response.json();
+            const rawData = await response.json();
+            console.log('Données brutes reçues du serveur:', JSON.stringify(rawData, null, 2));
+
+            // Les données sont déjà dans le bon format
+            const serverData: RecordingData[] = rawData;
+
             console.log('Enregistrements chargés:', serverData);
       
             setJsonContent(serverData);
@@ -84,11 +91,9 @@ export function PlayerProvider({ children }: any) {
             const formData = new FormData();
             formData.append('file', {
                 uri: uri,
-                type: 'audio/mp4',
-                name: `recording-${Date.now()}.m4a`
+                type: 'audio/mp4'
             } as any);
 
-            console.log('Envoi de l\'enregistrement pour transcription...');
             const response = await fetch("http://vps-692a3a83.vps.ovh.net:5048/api/audio", {
                 method: "POST",
                 headers: {
@@ -101,15 +106,6 @@ export function PlayerProvider({ children }: any) {
                 throw new Error(`Erreur HTTP: ${response.status}`);
             }
 
-            const json = await response.json();
-            console.log("Réponse du serveur:", json);
-
-            setJsonContent(prev => [...prev, {
-                audioUri: uri,
-                transcription: json.transcript ?? "",
-                summary: json.summary ?? "",
-            }]);
-            
             setIsLoadingJson(false);
         } catch (err) {
             console.error("Erreur lors de l'envoi de l'enregistrement:", err);

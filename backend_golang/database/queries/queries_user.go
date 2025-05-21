@@ -133,7 +133,7 @@ func InsertFileRecord(db *sql.DB, file *models.File) error {
 
 func GetFilesByUserID(db *sql.DB, userID int) ([]models.File, error) {
 	rows, err := db.Query(`
-		SELECT id, user_id, audio_input_path, transcription_path, summary_path, audio_output_path, created_at
+		SELECT audio_input_path, transcription_path, summary_path, audio_output_path, created_at
 		FROM files
 		WHERE user_id = ?
 		ORDER BY created_at DESC
@@ -147,8 +147,6 @@ func GetFilesByUserID(db *sql.DB, userID int) ([]models.File, error) {
 	for rows.Next() {
 		var file models.File
 		err := rows.Scan(
-			&file.ID,
-			&file.UserID,
 			&file.AudioInputPath,
 			&file.TranscriptionPath,
 			&file.SummaryPath,
@@ -161,4 +159,28 @@ func GetFilesByUserID(db *sql.DB, userID int) ([]models.File, error) {
 		files = append(files, file)
 	}
 	return files, nil
+}
+
+// GetFileByPath récupère un fichier par son chemin
+func GetFileByPath(db *sql.DB, filePath string) (*models.File, error) {
+	var file models.File
+	query := `
+		SELECT audio_input_path, transcription_path, summary_path, audio_output_path, created_at
+		FROM files
+		WHERE audio_input_path = ? OR audio_output_path = ?
+	`
+	err := db.QueryRow(query, filePath, filePath).Scan(
+		&file.AudioInputPath,
+		&file.TranscriptionPath,
+		&file.SummaryPath,
+		&file.AudioOutputPath,
+		&file.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("file not found")
+		}
+		return nil, err
+	}
+	return &file, nil
 }
