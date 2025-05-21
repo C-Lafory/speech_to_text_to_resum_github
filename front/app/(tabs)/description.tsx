@@ -13,9 +13,13 @@ export default function Description() {
     const [isPlaying, setIsPlaying] = useState(false);
 
     useEffect(() => {
-        alert('Chargement des données...');
         loadAllRecordings();
     }, []);
+
+    const handleRefresh = async () => {
+        alert('Rafraîchissement des données...');
+        await loadAllRecordings();
+    };
 
     useEffect(() => {
         if (jsonContent && jsonContent.length > 0) {
@@ -67,6 +71,20 @@ export default function Description() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Mes enregistrements</Text>
+                    <Pressable
+                        onPress={handleRefresh}
+                        style={styles.refreshButton}
+                    >
+                        <MaterialIcons 
+                            name="refresh" 
+                            size={24} 
+                            color="purple" 
+                        />
+                    </Pressable>
+                </View>
+
                 {isLoadingJson ? (
                     <ActivityIndicator size="large" color="#0000ff" />
                 ) : jsonContent && jsonContent.length > 0 ? (
@@ -135,6 +153,22 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 16,
         backgroundColor: '#fff',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    refreshButton: {
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: '#f5f5f5',
     },
     recordingItem: {
         marginBottom: 16,
