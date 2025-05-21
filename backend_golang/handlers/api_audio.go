@@ -213,7 +213,7 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 
 		log.Println("Fichier audio sauvegardé localement avec succès")
 
-		fileBase := fmt.Sprintf("./api/file/user_%d/%s", userID, audioUUID)
+		fileBase := fmt.Sprintf("./api/files/user_%d/%s", userID, audioUUID)
 		transPath := filepath.Join(fileBase, "transcription.txt")
 		summaryPath := filepath.Join(fileBase, "resum.txt")
 		audioOutPath := filepath.Join(fileBase, "audio_resume.mp3")

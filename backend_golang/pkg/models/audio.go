@@ -18,8 +18,8 @@ func SaveAudioFileWithUUID(userID int, audioUUID string, file AudioInfos) (strin
 	safeFilename := strings.ReplaceAll(file.Filename, " ", "_")
 	audioExt := filepath.Ext(safeFilename) // ex: .wav, .mp3
 
-	// 📁 Répertoire final : ./api/file/user_<id>/<uuid>/
-	targetDir := fmt.Sprintf("./api/file/user_%d/%s", userID, audioUUID)
+	// 📁 Répertoire final : ./api/files/user_<id>/<uuid>/
+	targetDir := fmt.Sprintf("./api/files/user_%d/%s", userID, audioUUID)
 	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 		return "", "", fmt.Errorf("could not create target dir: %w", err)
 	}
