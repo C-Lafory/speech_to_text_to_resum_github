@@ -196,6 +196,8 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 			utils.RespondWithMessage(w, http.StatusInternalServerError, fmt.Sprintf("Error saving audio: %v", err))
 			return
 		}
+		log.Printf("Chemin absolu du fichier audio: %s", absPath)
+		log.Printf("Chemin de la base de données du fichier audio: %s", dbPath)
 
 		dst, err := os.Create(absPath)
 		if err != nil {
