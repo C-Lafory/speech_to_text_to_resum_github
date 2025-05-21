@@ -253,10 +253,10 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 		// Insertion en base
 		fileRecord := models.File{
 			UserID:            userID,
-			AudioInputPath:    dbPath,
+			AudioInput:    dbPath,
 			TranscriptionPath: strings.TrimPrefix(transPath, "./static"),
 			SummaryPath:       strings.TrimPrefix(summaryPath, "./static"),
-			AudioOutputPath:   strings.TrimPrefix(audioOutPath, "./static"),
+			AudioOutput:   strings.TrimPrefix(audioOutPath, "./static"),
 			CreatedAt:         time.Now(),
 		}
 		if err := database.InsertFileRecord(db, &fileRecord); err != nil {
@@ -271,7 +271,8 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 			"message":     "Audio processed successfully.",
 			"transcript":  fileRecord.TranscriptionPath,
 			"summary":     fileRecord.SummaryPath,
-			"audio_final": fileRecord.AudioOutputPath,
+			"audio_final": fileRecord.AudioOutput,
+			"audio_input": fileRecord.AudioInput,
 		})
 	}
 }
