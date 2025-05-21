@@ -46,12 +46,15 @@ export function PlayerProvider({ children }: any) {
 
     const loadAllRecordings = async () => {
         try {
-            console.log('Chargement des enregistrements existants...');
+            console.log('1. Début du chargement des enregistrements');
             const token = await getToken();
+            console.log('2. Token récupéré:', token ? 'Oui' : 'Non');
+            
             if (!token) {
                 throw new Error("No token found");
             }
-
+    
+            console.log('3. Envoi de la requête au serveur');
             const response = await fetch('http://vps-692a3a83.vps.ovh.net:5048/api/files', {
                 method: 'GET',
                 headers: {
@@ -59,23 +62,22 @@ export function PlayerProvider({ children }: any) {
                     'Authorization': `Bearer ${token}`
                 },
             });
-      
+          
+            console.log('4. Réponse reçue, status:', response.status);
             if (!response.ok) {
-                throw new Error('Failed to fetch recordings from server');
+                throw new Error(`Failed to fetch recordings from server: ${response.status}`);
             }
-
+    
             const rawData = await response.json();
-            console.log('Données brutes reçues du serveur:', JSON.stringify(rawData, null, 2));
-
-            // Les données sont déjà dans le bon format
+            console.log('5. Données reçues:', rawData);
+    
             const serverData: RecordingData[] = rawData;
-
-            console.log('Enregistrements chargés:', serverData);
-      
+            console.log('6. Données formatées:', serverData);
+          
             setJsonContent(serverData);
             return serverData;
         } catch (error) {
-            console.error('Erreur lors du chargement des enregistrements:', error);
+            console.error('Erreur détaillée:', error);
             return [];
         }
     };

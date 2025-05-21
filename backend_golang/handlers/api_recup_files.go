@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"net/http"
 	"os"
 	"time"
@@ -13,11 +14,11 @@ import (
 
 // Structure pour la réponse
 type FileContent struct {
-	Date            time.Time `json:"date"`            // Date de création comme titre
-	Transcription   string    `json:"transcription"`   // Contenu de la transcription
-	Summary         string    `json:"summary"`         // Contenu du résumé
-	AudioInputData  []byte    `json:"audioInputData"`  // Contenu audio original
-	AudioOutputData []byte    `json:"audioOutputData"` // Contenu audio du résumé
+	Date            string `json:"date"`            // Date en string
+	Transcription   string `json:"transcription"`   // Contenu de la transcription
+	Summary         string `json:"summary"`         // Contenu du résumé
+	AudioInputData  string `json:"audioInputData"`  // Données audio en base64
+	AudioOutputData string `json:"audioOutputData"` // Données audio en base64
 }
 
 // Handler pour servir les fichiers audio
@@ -98,12 +99,16 @@ func HandlerGetUserFiles(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
+			// Conversion des données en base64
+			audioInputBase64 := base64.StdEncoding.EncodeToString(audioInputData)
+			audioOutputBase64 := base64.StdEncoding.EncodeToString(audioOutputData)
+
 			fileContents = append(fileContents, FileContent{
-				Date:            file.CreatedAt,
+				Date:            file.CreatedAt.Format(time.RFC3339), // Conversion en string
 				Transcription:   string(transcriptionContent),
 				Summary:         string(summaryContent),
-				AudioInputData:  audioInputData,
-				AudioOutputData: audioOutputData,
+				AudioInputData:  audioInputBase64,
+				AudioOutputData: audioOutputBase64,
 			})
 		}
 
