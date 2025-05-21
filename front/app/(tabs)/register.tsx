@@ -8,8 +8,8 @@ import { RootStackParamList } from '../types/_navigation'; // Import du type Roo
 const RegistrationPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [email, setEmail] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [Email, setEmail] = useState('');
+  const [ConfirmPassword, setConfirmPassword] = useState('');
   
   type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
   const navigation = useNavigation<RegisterScreenNavigationProp>();
@@ -20,43 +20,60 @@ const RegistrationPage = () => {
   };
 
   // Fonction pour gérer l'enregistrement
+  //suppr de confrim password pour les tests
   const handleRegistration = async () => {
-    if (!username || !email || !password || !confirmPassword) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
+    if (!username || !Email || !password){
+      console.log('Error', 'Please fill in all fields.');
+      Alert.alert('Please fill in all fields.');
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
-      return;
-    }
+    //Pour les test register
+    // if (password !== ConfirmPassword) {
+    //   console.log('Error', 'Passwords do not match.');
+    //   return;
+    // }
 
+    //port 48 au lieu de 50
     try {
       const response = await fetch('http://vps-692a3a83.vps.ovh.net:5048/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
         body: JSON.stringify({
           username: username,
           password: password,
-          email: email
+          email: Email,
+          // Confirmation: ConfirmPassword,
         }),
       });
 
+      // if (!response.ok) {
+      //   throw new Error(`HTTP error! status: ${response.status}`);
+      // }
+      
+      // pour lire la response en brut si j'ai besoin de debugg
+      // const textResponse = await response.text();
+      // console.log('Raw response from server:', textResponse);
+
       const data = await response.json();
-      console.log('Réponse du serveur:', data);
+      console.log('Response from server:', data);
+
+      // if (data.Token) {
+      //   await AsyncStorage.setItem('session_token', data.Token);
+      //   console.log('Token stored successfully');
+      // }
 
       if (response.ok) {
-        Alert.alert('Inscription réussie', `Bienvenue, ${username}!`);
+        Alert.alert('Register Successful', `Welcome, ${username}!`);
         navigation.navigate('Login'); // Naviguer vers la page Login
       } else {
-        Alert.alert('Échec de l\'inscription', data.message || 'Erreur lors de l\'inscription');
+        Alert.alert('Register Failed', data.message || 'Invalid inputs');
       }
     } catch (error) {
-      console.error('Erreur d\'inscription:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+      console.error('Register error:', error);
+      Alert.alert('Error', 'An error occurred. Please try again.');
     }
   };
 
@@ -66,34 +83,25 @@ const RegistrationPage = () => {
     <View style={styles.container}>
       <TextInput
         style={styles.input}
-        placeholder="Nom d'utilisateur"
+        placeholder="Username"
         value={username}
         onChangeText={setUsername}
       />
       <TextInput
         style={styles.input}
         placeholder="Email"
-        value={email}
+        value={Email}
         onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
       />
       <TextInput
         style={styles.input}
-        placeholder="Mot de passe"
+        placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirmer le mot de passe"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
-      <Button title="Créer un compte" onPress={handleRegistration} />
-      <Button title="Se connecter" onPress={navigateToLogin} />
+      <Button title="Create your new account" onPress={handleRegistration} />
+      <Button title="Login" onPress={navigateToLogin} />
     </View>
   );
 };

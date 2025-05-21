@@ -5,7 +5,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system";
 
-import usePlayer from "@/app/contexts/playerContext";
+import {usePlayer} from "../../contexts/playerContext";
 import { useThemeColor } from "@/app/hooks/useThemeColor";
 
 export default function Recorder() {
@@ -18,7 +18,7 @@ export default function Recorder() {
     // const [savedRecordings, setSavedRecordings] = useState<string[]>([]);
 
     const [isRecording, setIsRecording] = useState(false);
-    const { sendRecording, loadRecordings } = usePlayer();
+    const { sendRecording, isLoadingJson } = usePlayer();
 
     // useEffect(() => {
     //     const fetchRecordings = async () => {
@@ -66,20 +66,21 @@ export default function Recorder() {
 
             console.log("Recording moved to", newUri);
 
+            // Convert the recording to base64
             if (newUri && sendRecording) {
-                await sendRecording(newUri);
-                await loadRecordings();
+                await handleRecordingComplete(newUri);
             }
 
             setRecording(null);
             setIsRecording(false);
         } else {
             try {
+
                 console.log("Requesting permissions..");
+
                 const { status } = await Audio.requestPermissionsAsync();
                 if (status !== "granted") {
                     alert("Permission to access microphone is required!");
-                    return;
                 }
 
                 await Audio.setAudioModeAsync({
@@ -94,10 +95,23 @@ export default function Recorder() {
                 
                 setRecording(recording);
                 console.log("Recording started");
-                setIsRecording(true);
             } catch (err) {
                 console.error("Failed to start recording", err);
             }
+        }
+        setIsRecording(!isRecording);
+    }
+
+    const handleRecordingComplete = async (uri: string) => {
+        try {
+            if (!sendRecording) {
+                throw new Error("sendRecording n'est pas disponible");
+            }
+            await sendRecording(uri);
+            // L'enregistrement est envoyé et traité
+            console.log("Enregistrement envoyé avec succès");
+        } catch (error) {
+            console.error("Erreur lors de l'envoi de l'enregistrement:", error);
         }
     };
 

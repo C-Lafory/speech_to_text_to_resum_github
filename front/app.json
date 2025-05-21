@@ -2,6 +2,7 @@
   "expo": {
     "name": "speech_to_text",
     "slug": "speech_to_text",
+    "owner": "clafory",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -47,7 +48,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "a0bdd43c-b1d8-4aaa-9143-abbb22120a00"
+        "projectId": "ac386b5f-6bb9-4031-a96e-60aba876715d"
       }
     }
   }
