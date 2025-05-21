@@ -213,7 +213,7 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 
 		log.Println("Fichier audio sauvegardé localement avec succès")
 
-		fileBase := fmt.Sprintf("./static/file/user_%d/%s", userID, audioUUID)
+		fileBase := fmt.Sprintf("./api/file/user_%d/%s", userID, audioUUID)
 		transPath := filepath.Join(fileBase, "transcription.txt")
 		summaryPath := filepath.Join(fileBase, "resum.txt")
 		audioOutPath := filepath.Join(fileBase, "audio_resume.mp3")
@@ -253,10 +253,10 @@ func HandlerNewAudio(db *sql.DB) http.HandlerFunc {
 		// Insertion en base
 		fileRecord := models.File{
 			UserID:            userID,
-			AudioInput:    dbPath,
-			TranscriptionPath: strings.TrimPrefix(transPath, "./static"),
-			SummaryPath:       strings.TrimPrefix(summaryPath, "./static"),
-			AudioOutput:   strings.TrimPrefix(audioOutPath, "./static"),
+			AudioInput:        dbPath,
+			TranscriptionPath: strings.TrimPrefix(transPath, "./api"),
+			SummaryPath:       strings.TrimPrefix(summaryPath, "./api"),
+			AudioOutput:       strings.TrimPrefix(audioOutPath, "./api"),
 			CreatedAt:         time.Now(),
 		}
 		if err := database.InsertFileRecord(db, &fileRecord); err != nil {
