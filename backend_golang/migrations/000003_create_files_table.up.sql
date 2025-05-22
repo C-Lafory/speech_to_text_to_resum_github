@@ -7,4 +7,4 @@ CREATE TABLE IF NOT EXISTS files (
     audio_output_path VARCHAR(255),    -- Chemin du fichier audio de sortie.
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Date de création.
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE -- Clé étrangère vers la table users.
-);
+); 
