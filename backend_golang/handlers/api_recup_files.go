@@ -84,7 +84,13 @@ func HandlerGetUserFiles(db *sql.DB) http.HandlerFunc {
 			log.Printf("   - Summary: %s", file.SummaryPath)
 			log.Printf("   - Audio Output: %s", file.AudioOutput)
 
+			log.Printf("Chemin de transcription: %s", file.TranscriptionPath)
 			// Lecture de la transcription
+			if _, err := os.Stat(file.TranscriptionPath); os.IsNotExist(err) {
+				log.Printf("Fichier de transcription non trouvé: %s", file.TranscriptionPath)
+				utils.RespondWithMessage(w, http.StatusNotFound, "Transcription file not found")
+				return
+			}
 			transcriptionContent, err := os.ReadFile(file.TranscriptionPath)
 			if err != nil {
 				log.Printf("7. Erreur lecture transcription: %v", err)
